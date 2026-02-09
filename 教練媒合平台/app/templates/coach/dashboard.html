@@ -1,0 +1,341 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-12 px-4">
+    <!-- Status Banner -->
+    <div class="mb-12">
+        {% if coach.status == 'draft' %}
+        <div
+            class="p-8 bg-blue-50 rounded-[2.5rem] border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="flex items-center gap-6">
+                <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                    <i class="fas fa-edit text-2xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900">目前狀態：草稿 (Draft)</h2>
+                    <p class="text-slate-500 font-medium italic">完善進階資料後，請送出審核以公開上架。</p>
+                </div>
+            </div>
+            <form action="/dashboard/submit-review" method="POST">
+                <button type="submit" class="btn-base btn-premium !h-16 !px-10 rounded-2xl text-lg">送出審核</button>
+            </form>
+        </div>
+        {% elif coach.status == 'approved' %}
+        <div
+            class="p-8 bg-emerald-50 rounded-[2.5rem] border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div class="flex items-center gap-6">
+                <div class="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-white">
+                    <i class="fas fa-check-double text-2xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-900">已公開上架 (Approved)</h2>
+                    <p class="text-slate-500 font-medium">您的專業標籤已生效，將更精準媒合學員。</p>
+                </div>
+            </div>
+            <a href="/coaches/{{ coach.id }}" target="_blank"
+                class="btn-base btn-secondary !h-16 !px-10 rounded-2xl text-lg">查看我的公開頁</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
+        <!-- Sidebar -->
+        <aside class="lg:col-span-1 space-y-8">
+            <div class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-xl text-center">
+                <div
+                    class="w-32 h-32 rounded-full overflow-hidden mx-auto mb-4 bg-slate-50 border-4 border-white shadow-lg p-4">
+                    {% if '健身' in coach.sports|from_json %}
+                    <img src="/static/images/fitness_coach.png" class="w-full h-full object-contain">
+                    {% elif '潛水' in coach.sports|from_json %}
+                    <img src="/static/images/diving_coach.png" class="w-full h-full object-contain">
+                    {% else %}
+                    <img src="/static/images/skiing_coach.png" class="w-full h-full object-contain">
+                    {% endif %}
+                </div>
+                <h2 class="text-xl font-black text-slate-900">{{ coach.display_name }}</h2>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{{ user.email }}</p>
+
+                <div class="mt-6 space-y-3">
+                    <a href="/account/coach/edit"
+                        class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-slate-400 shadow-sm">
+                            <i class="fas fa-user-edit"></i></div>
+                        編輯基本資料
+                    </a>
+                    <a href="/account/coach/showcase"
+                        class="flex items-center gap-3 p-3 rounded-xl bg-blue-50 text-blue-600 font-bold text-xs hover:bg-blue-100 transition-colors">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-blue-500 shadow-sm">
+                            <i class="fas fa-magic"></i></div>
+                        管理展示與作品
+                    </a>
+                    <a href="/account/coach/upgrade"
+                        class="flex items-center gap-3 p-3 rounded-xl bg-amber-50 text-amber-600 font-bold text-xs hover:bg-amber-100 transition-colors">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-amber-500 shadow-sm">
+                            <i class="fas fa-rocket"></i></div>
+                        升級會員方案
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="lg:col-span-3 space-y-12">
+            <!-- Profile Settings Form -->
+            <section class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+                <h3 class="text-2xl font-black text-slate-900 mb-10">設定教練專業與進階標籤</h3>
+
+                <form action="/dashboard/profile" method="POST" id="profileForm" class="space-y-12">
+                    <!-- Basic Info -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">顯示名稱</label>
+                            <input type="text" name="display_name" value="{{ coach.display_name }}" required
+                                class="w-full h-14 px-6 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-100 transition-all">
+                        </div>
+                        <div>
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">主修運動項目
+                                (可多選)</label>
+                            <div class="flex flex-wrap gap-3">
+                                {% set active_sports = coach.sports | from_json %}
+                                {% for s in ['健身', '潛水', '滑雪'] %}
+                                <label class="cursor-pointer">
+                                    <input type="checkbox" name="sports_list" value="{{ s }}" class="hidden peer" {% if
+                                        s in active_sports %}checked{% endif %} onchange="updateSportFields()">
+                                    <span
+                                        class="inline-block px-4 py-2 rounded-xl border-2 border-slate-100 bg-white text-sm font-bold text-slate-400 peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 transition-all">{{
+                                        s }}</span>
+                                </label>
+                                {% endfor %}
+                                <input type="hidden" name="sports_text" id="sports_text"
+                                    value="{{ active_sports | join(',') }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">個人簡介 /
+                            專業背景</label>
+                        <textarea name="bio" rows="4"
+                            class="w-full p-6 bg-slate-50 border-none rounded-2xl font-bold focus:ring-2 focus:ring-blue-100 transition-all">{{ coach.bio }}</textarea>
+                    </div>
+
+                    <!-- Shared Advanced Fields -->
+                    <div class="space-y-8 p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100">
+                        <h4 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                            <i class="fas fa-layer-group text-blue-500 text-sm"></i> 共用專業選項
+                        </h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                            <!-- A1 Teaching Style -->
+                            <div>
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">教學風格
+                                    (最多2項)</label>
+                                <div class="grid grid-cols-1 gap-2">
+                                    {% set c_styles = coach.teaching_styles | from_json %}
+                                    {% for opt in ["系統化/有計畫", "嚴格高效率", "耐心陪跑/鼓勵型", "安全保守/動作調整型"] %}
+                                    <label
+                                        class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                        <input type="checkbox" name="teaching_styles" value="{{ opt }}"
+                                            class="w-4 h-4 text-blue-600 rounded" {% if opt in c_styles %}checked{%
+                                            endif %}>
+                                        <span class="text-sm font-bold text-slate-700">{{ opt }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- A2 Audience -->
+                            <div>
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">適合族群
+                                    (可多選)</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    {% set c_audiences = coach.audiences | from_json %}
+                                    {% for opt in ["新手友善", "銀髮友善", "女性友善", "親子/青少年"] %}
+                                    <label
+                                        class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                        <input type="checkbox" name="audiences" value="{{ opt }}"
+                                            class="w-4 h-4 text-blue-600 rounded" {% if opt in c_audiences %}checked{%
+                                            endif %}>
+                                        <span class="text-[11px] font-bold text-slate-700">{{ opt }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- A3 Venues -->
+                        <div>
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">上課型態
+                                (可多選)</label>
+                            <div class="flex flex-wrap gap-2">
+                                {% set c_venues = coach.venues | from_json %}
+                                {% for opt in ["1對1", "小班", "線上", "到府", "教練指定場地"] %}
+                                <label
+                                    class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                    <input type="checkbox" name="venues" value="{{ opt }}"
+                                        class="w-4 h-4 text-blue-600 rounded" {% if opt in c_venues %}checked{% endif
+                                        %}>
+                                    <span class="text-xs font-bold text-slate-700">{{ opt }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Specialized Sections (Dynamic) -->
+                    <div id="fitness_block" class="sport-spec hidden animate-in fade-in slide-in-from-top-4">
+                        <div class="space-y-8 p-8 bg-rose-50/30 rounded-[2.5rem] border border-rose-100">
+                            <h4 class="text-lg font-black text-rose-600 flex items-center gap-2">
+                                <i class="fas fa-dumbbell"></i> 健身專屬項目 (Fitness)
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">專長目標</label>
+                                    <div class="grid grid-cols-1 gap-2 text-sm font-bold">
+                                        {% set c_spec = coach.specialties | from_json %}
+                                        {% for opt in ["增肌", "減脂", "體態雕塑", "體能/耐力", "動作與姿勢調整"] %}
+                                        <label
+                                            class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                            <input type="checkbox" name="specialties" value="{{ opt }}"
+                                                class="w-4 h-4 text-blue-600" {% if opt in c_spec %}checked{% endif %}>
+                                            <span>{{ opt }}</span>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">其他/特殊安全需求</label>
+                                    <div class="space-y-4">
+                                        <label
+                                            class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer text-sm font-bold">
+                                            <input type="checkbox" name="specialties" value="產後核心/骨盆底友善"
+                                                class="w-4 h-4 text-blue-600" {% if "產後核心/骨盆底友善" in c_spec %}checked{%
+                                                endif %}>
+                                            <span>產後核心/骨盆底友善</span>
+                                        </label>
+                                        <input type="text" name="other_specialty" placeholder="其他專長 (如：術後回訓...)"
+                                            value="{{ coach.other_specialty or '' }}"
+                                            class="w-full h-12 px-4 bg-white border-slate-100 rounded-xl font-bold text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="diving_block" class="sport-spec hidden animate-in fade-in slide-in-from-top-4">
+                        <div class="space-y-8 p-8 bg-blue-50/30 rounded-[2.5rem] border border-blue-100">
+                            <h4 class="text-lg font-black text-blue-600 flex items-center gap-2">
+                                <i class="fas fa-water"></i> 潛水專屬項目 (Diving)
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">教學課程包含</label>
+                                    <div class="grid grid-cols-1 gap-2 text-sm font-bold">
+                                        {% set c_spec = coach.specialties | from_json %}
+                                        {% for opt in ["體驗/初學", "OW/AOW課程", "專長課程", "Fun Dive陪同/導潛"] %}
+                                        <label
+                                            class="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                            <input type="checkbox" name="specialties" value="{{ opt }}"
+                                                class="w-4 h-4 text-blue-600" {% if opt in c_spec %}checked{% endif %}>
+                                            <span>{{ opt }}</span>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">核心技能指導</label>
+                                    <div class="grid grid-cols-2 gap-2 text-[11px] font-bold">
+                                        {% set d_skills = ["中性浮力", "耗氣改善", "踢法/姿態", "怕水建立信心", "水下攝影引導"] %}
+                                        {% for opt in d_skills %}
+                                        <label
+                                            class="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                            <input type="checkbox" name="specialties" value="{{ opt }}"
+                                                class="w-4 h-4 text-blue-600" {% if opt in c_spec %}checked{% endif %}>
+                                            <span>{{ opt }}</span>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="skiing_block" class="sport-spec hidden animate-in fade-in slide-in-from-top-4">
+                        <div class="space-y-8 p-8 bg-purple-50/30 rounded-[2.5rem] border border-purple-100">
+                            <h4 class="text-lg font-black text-purple-600 flex items-center gap-2">
+                                <i class="fas fa-person-skiing"></i> 滑雪專屬項目 (Ski/Snowboard)
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">教學器材</label>
+                                    <select name="gear_type"
+                                        class="w-full h-14 px-6 bg-white border border-slate-100 rounded-2xl font-bold">
+                                        <option value="Ski" {% if coach.gear_type=='Ski' %}selected{% endif %}>Ski (雙板)
+                                        </option>
+                                        <option value="Snowboard" {% if coach.gear_type=='Snowboard' %}selected{% endif
+                                            %}>Snowboard (單板)</option>
+                                        <option value="Both" {% if coach.gear_type=='Both' %}selected{% endif %}>Ski &
+                                            Snowboard (兩者皆可)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label
+                                        class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">重點技能與教學</label>
+                                    <div class="grid grid-cols-2 gap-2 text-[11px] font-bold">
+                                        {% set c_spec = coach.specialties | from_json %}
+                                        {% set s_skills = ["新手入門", "煞車安全", "轉彎技巧", "刻滑入門", "建立信心", "影片回放教學"] %}
+                                        {% for opt in s_skills %}
+                                        <label
+                                            class="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-100 cursor-pointer">
+                                            <input type="checkbox" name="specialties" value="{{ opt }}"
+                                                class="w-4 h-4 text-blue-600" {% if opt in c_spec %}checked{% endif %}>
+                                            <span>{{ opt }}</span>
+                                        </label>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full btn-base btn-premium !h-20 rounded-[1.5rem] shadow-2xl shadow-blue-500/20 text-xl font-black tracking-widest uppercase">
+                        儲存並更新所有教練標籤
+                    </button>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    function updateSportFields() {
+        const selectedSports = Array.from(document.querySelectorAll('input[name="sports_list"]:checked')).map(el => el.value);
+        document.getElementById('sports_text').value = selectedSports.join(',');
+
+        // Hide all blocks first
+        document.querySelectorAll('.sport-spec').forEach(el => el.classList.add('hidden'));
+
+        // Show selected blocks
+        if (selectedSports.includes('健身')) document.getElementById('fitness_block').classList.remove('hidden');
+        if (selectedSports.includes('潛水')) document.getElementById('diving_block').classList.remove('hidden');
+        if (selectedSports.includes('滑雪')) document.getElementById('skiing_block').classList.remove('hidden');
+    }
+
+    // Initial check on load
+    window.addEventListener('load', updateSportFields);
+</script>
+{% endblock %}

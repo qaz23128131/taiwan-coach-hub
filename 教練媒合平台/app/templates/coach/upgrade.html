@@ -1,0 +1,296 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 pb-24">
+    <!-- Hero Header -->
+    <div class="bg-white border-b border-slate-100 pt-20 pb-16">
+        <div class="max-w-5xl mx-auto px-6 text-center">
+            <span
+                class="inline-block px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+                Membership Plans
+            </span>
+            <h1 class="text-3xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">
+                升級您的教練事業，<span class="text-blue-600">讓業績翻倍成長</span>
+            </h1>
+            <p class="text-slate-500 font-bold max-w-2xl mx-auto text-sm leading-relaxed">
+                全台灣最專業的教練媒合平台，為您提供精準曝光、收藏轉化、諮詢加速與高效預約等全方位增長工具。
+            </p>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 -mt-10 relative z-10">
+
+        <!-- Plan Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
+            <!-- Basic Plan -->
+            <div
+                class="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col hover:-translate-y-1 transition-transform duration-300">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-black text-slate-900 mb-1">基本入門</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Basic Plan</p>
+                </div>
+                <div class="mb-8">
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-black text-slate-900">NT$ 0</span>
+                        <span class="text-sm font-bold text-slate-400">/ 月</span>
+                    </div>
+                    <p class="text-xs font-bold text-slate-500 mt-3 bg-slate-50 p-3 rounded-xl inline-block">
+                        適合剛開始嘗試線上媒合的教練
+                    </p>
+                </div>
+                <div class="space-y-4 mb-10 flex-grow text-slate-500 text-sm font-medium">
+                    <p><i class="fas fa-check text-slate-300 mr-2"></i> 基礎曝光 (1.0x)</p>
+                    <p><i class="fas fa-check text-slate-300 mr-2"></i> 基礎個人頁面</p>
+                    <p><i class="fas fa-check text-slate-300 mr-2"></i> 接收學員諮詢</p>
+                </div>
+                {% if coach.subscription_level in ['basic', 'free'] %}
+                <button disabled
+                    class="w-full py-4 bg-slate-100 text-slate-400 rounded-xl font-black text-xs cursor-default">
+                    目前方案
+                </button>
+                {% else %}
+                <button onclick="changePlan('free')"
+                    class="w-full py-4 border-2 border-slate-100 text-slate-500 hover:bg-slate-50 rounded-xl font-black text-xs transition-all">
+                    切換至基本
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Pro Plan -->
+            <div
+                class="relative bg-white rounded-[2rem] p-8 shadow-2xl shadow-blue-500/20 border-2 border-blue-600 flex flex-col scale-105 z-20">
+                <div
+                    class="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/30">
+                    Most Popular
+                </div>
+                <div class="mb-6">
+                    <h3 class="text-2xl font-black text-blue-900 mb-1">進階成長</h3>
+                    <p class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Pro Growth</p>
+                </div>
+                <div class="mb-8">
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-black text-blue-600">NT$ 199</span>
+                        <span class="text-sm font-bold text-blue-400">/ 月</span>
+                    </div>
+                    <p
+                        class="text-xs font-bold text-blue-600 mt-3 bg-blue-50 p-3 rounded-xl inline-block border border-blue-100">
+                        ✨ 排序權重 2.5x + 豐富作品集
+                    </p>
+                </div>
+                <div class="space-y-4 mb-10 flex-grow text-slate-700 text-sm font-bold">
+                    <p><i class="fas fa-check-circle text-blue-500 mr-2"></i> 排序權重提升至 <span
+                            class="text-blue-600">2.5x</span></p>
+                    <p><i class="fas fa-check-circle text-blue-500 mr-2"></i> 作品集擴增至 <span class="text-blue-600">12
+                            張</span></p>
+                    <p><i class="fas fa-check-circle text-blue-500 mr-2"></i> <span class="text-blue-600">10 組</span>
+                        快捷回覆模板</p>
+                    <p><i class="fas fa-check-circle text-blue-500 mr-2"></i> 進階漏斗與流量分析</p>
+                </div>
+                {% if coach.subscription_level == 'pro' %}
+                <button disabled
+                    class="w-full py-4 bg-blue-50 text-blue-300 rounded-xl font-black text-xs cursor-default">
+                    目前方案
+                </button>
+                {% else %}
+                <button onclick="changePlan('pro')"
+                    class="w-full py-4 bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg shadow-blue-200 rounded-xl font-black text-xs transition-all">
+                    {% if coach.subscription_level == 'elite' %}切換至進階{% else %}立即升級進階{% endif %}
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Elite Plan -->
+            <div
+                class="bg-slate-900 rounded-[2rem] p-8 shadow-2xl shadow-slate-900/20 border border-slate-800 flex flex-col text-white hover:-translate-y-1 transition-transform duration-300">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-black text-amber-400 mb-1">菁英旗艦</h3>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Elite Master</p>
+                </div>
+                <div class="mb-8">
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-black text-white">NT$ 399</span>
+                        <span class="text-sm font-bold text-slate-500">/ 月</span>
+                    </div>
+                    <p
+                        class="text-xs font-bold text-amber-500 mt-3 bg-slate-800 p-3 rounded-xl inline-block border border-slate-700">
+                        👑 排序權重 5.0x + 完整行銷工具
+                    </p>
+                </div>
+                <div class="space-y-4 mb-10 flex-grow text-slate-300 text-sm font-medium">
+                    <p><i class="fas fa-crown text-amber-500 mr-2"></i> 排序權重霸主 <span class="text-amber-400">5.0x</span>
+                    </p>
+                    <p><i class="fas fa-check text-amber-500 mr-2"></i> 完整解鎖 <span class="text-white font-bold">課程方案 &
+                            FAQ</span></p>
+                    <p><i class="fas fa-check text-amber-500 mr-2"></i> <strong>完整轉換漏斗</strong> 數據分析</p>
+                    <p><i class="fas fa-check text-amber-500 mr-2"></i> 3 組社群外部導流連結</p>
+                </div>
+                {% if coach.subscription_level == 'elite' %}
+                <button disabled
+                    class="w-full py-4 bg-slate-800 text-slate-600 rounded-xl font-black text-xs cursor-default">
+                    目前方案
+                </button>
+                {% else %}
+                <button onclick="changePlan('elite')"
+                    class="w-full py-4 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 hover:shadow-lg shadow-amber-500/20 rounded-xl font-black text-xs transition-all">
+                    升級菁英旗艦
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Detailed Comparison Table -->
+        <div class="bg-white rounded-[3rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+            <div class="p-10 border-b border-slate-100 bg-slate-50/50">
+                <h2 class="text-2xl font-black text-slate-900 text-center">詳細權益比較</h2>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-100">
+                            <th class="p-6 w-1/4"></th>
+                            <th class="p-6 text-center text-sm font-black text-slate-500">基本入門</th>
+                            <th class="p-6 text-center text-sm font-black text-blue-600 bg-blue-50/30">進階成長</th>
+                            <th class="p-6 text-center text-sm font-black text-slate-900 bg-slate-50/50">菁英旗艦</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm font-bold text-slate-600">
+                        <!-- Rank -->
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">搜尋排序權重</td>
+                            <td class="py-6 px-10 text-center text-slate-400">1.0x (標準)</td>
+                            <td class="py-6 px-10 text-center text-blue-600 bg-blue-50/10">2.5x (提升)</td>
+                            <td class="py-6 px-10 text-center text-amber-500 bg-slate-50/50"><i
+                                    class="fas fa-crown mr-1"></i> 5.0x (頂級)</td>
+                        </tr>
+
+                        <!-- Content Limits Header -->
+                        <tr class="bg-slate-50/60">
+                            <td colspan="4"
+                                class="py-3 px-10 text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                                展示頁內容上限</td>
+                        </tr>
+
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">作品集 / 證照相簿 (Media)</td>
+                            <td class="py-6 px-10 text-center text-slate-400">3 張</td>
+                            <td class="py-6 px-10 text-center text-blue-600 bg-blue-50/10">9 張</td>
+                            <td class="py-6 px-10 text-center text-slate-900 bg-slate-50/50 font-black">15 張</td>
+                        </tr>
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">課程方案上架 (Offers)</td>
+                            <td class="py-6 px-10 text-center text-slate-400">1 組</td>
+                            <td class="py-6 px-10 text-center text-blue-600 bg-blue-50/10">3 組</td>
+                            <td class="py-6 px-10 text-center text-slate-900 bg-slate-50/50 font-black">6 組</td>
+                        </tr>
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">常見問題 (FAQ)</td>
+                            <td class="py-6 px-10 text-center text-slate-300"><i class="fas fa-lock"></i> 鎖定</td>
+                            <td class="py-6 px-10 text-center text-blue-600 bg-blue-50/10">3 題</td>
+                            <td class="py-6 px-10 text-center text-slate-900 bg-slate-50/50 font-black">6 題</td>
+                        </tr>
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">社群連結 (Line/IG)</td>
+                            <td class="py-6 px-10 text-center text-slate-300"><i class="fas fa-lock"></i> 鎖定</td>
+                            <td class="py-6 px-10 text-center text-blue-600 bg-blue-50/10">3 個</td>
+                            <td class="py-6 px-10 text-center text-slate-900 bg-slate-50/50 font-black">5 個</td>
+                        </tr>
+
+                        <!-- Data & Tools Header -->
+                        <tr class="bg-slate-50/60">
+                            <td colspan="4"
+                                class="py-3 px-10 text-[10px] text-slate-400 font-black uppercase tracking-widest">數據與功能
+                            </td>
+                        </tr>
+
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">基礎瀏覽數據 (Views)</td>
+                            <td class="py-6 px-10 text-center"><i class="fas fa-check text-emerald-500"></i></td>
+                            <td class="py-6 px-10 text-center bg-blue-50/10"><i
+                                    class="fas fa-check text-emerald-500"></i></td>
+                            <td class="py-6 px-10 text-center bg-slate-50/50"><i
+                                    class="fas fa-check text-emerald-500"></i></td>
+                        </tr>
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">學員互動指標 (收藏/諮詢數)</td>
+                            <td class="py-6 px-10 text-center text-slate-300"><i class="fas fa-lock"></i></td>
+                            <td class="py-6 px-10 text-center bg-blue-50/10"><i class="fas fa-check text-blue-600"></i>
+                            </td>
+                            <td class="py-6 px-10 text-center bg-slate-50/50"><i
+                                    class="fas fa-check text-slate-900"></i></td>
+                        </tr>
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">完整轉換漏斗 (Funnel %)</td>
+                            <td class="py-6 px-10 text-center text-slate-400 text-xs">🔒 不提供<br><span
+                                    class="text-[10px] opacity-70">（僅顯示基礎瀏覽數）</span></td>
+                            <td class="py-6 px-10 text-center text-slate-500 text-xs bg-blue-50/10">🔒 不提供<br><span
+                                    class="text-[10px] opacity-70">（提供收藏/諮詢/預約數<br>與簡易轉換率）</span></td>
+                            <td class="py-6 px-10 text-center text-slate-900 font-bold text-xs bg-slate-50/50">✅
+                                完整解鎖<br><span
+                                    class="text-[10px] text-amber-600 font-normal">（曝光→點擊→諮詢→預約<br>全漏斗＋掉落點提示）</span>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                            <td class="py-6 px-10">自訂模組排序</td>
+                            <td class="py-6 px-10 text-center text-slate-300"><i class="fas fa-lock"></i></td>
+                            <td class="py-6 px-10 text-center bg-blue-50/10"><i class="fas fa-check text-blue-600"></i>
+                            </td>
+                            <td class="py-6 px-10 text-center bg-slate-50/50"><i
+                                    class="fas fa-check text-slate-900"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="max-w-3xl mx-auto space-y-8 pb-20">
+            <h3 class="text-2xl font-black text-slate-900 text-center mb-10">常見問題 FAQ</h3>
+            <div class="space-y-4">
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                    <h4 class="font-black text-slate-900 mb-2 text-sm">升級方案後多久會生效？</h4>
+                    <p class="text-xs font-bold text-slate-500 leading-relaxed">付款完成後系統會立即為您調整搜尋權重與開啟進階功能。若您是菁英會員，大約 30
+                        分鐘內就會出現在首頁推薦名單中。</p>
+                </div>
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+                    <h4 class="font-black text-slate-900 mb-2 text-sm">可以隨時取消訂閱或更換方案嗎？</h4>
+                    <p class="text-xs font-bold text-slate-500 leading-relaxed">
+                        是的，您可以隨時在教練中心取消訂閱。方案變更會在下一個計費週期生效，若您是升級，則功能會立即開通。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function changePlan(level) {
+        if (!confirm('如果您確定要變更訂閱方案，系統將為您切換權限（Demo 模式：立即生效）。')) return;
+
+        try {
+            const res = await fetch('/api/account/coach/subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ level: level })
+            });
+
+            if (res.ok) {
+                alert('訂閱方案更新成功！歡迎使用更多進階功能。');
+                window.location.reload();
+            } else {
+                // Try to get error message
+                const data = await res.json().catch(() => ({}));
+                const msg = data.detail || '更新失敗，請洽客服人員。';
+
+                if (msg.includes("limit")) {
+                    alert(`無法切換至此方案：\n您的內容數量 (作品集/方案) 已超過目標方案的上限。\n\n請先刪除部分內容後再嘗試降級。`);
+                } else {
+                    alert(`更新失敗：${msg}`);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert('系統忙碌中，請稍後再試。');
+        }
+    }
+</script>
+{% endblock %}

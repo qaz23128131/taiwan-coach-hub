@@ -1,0 +1,191 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-10 h-[calc(100vh-160px)] flex flex-col">
+    <!-- Chat Header -->
+    <div class="mb-10 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-6">
+            <a href="/messages"
+                class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 hover:shadow-lg transition-all border border-slate-100">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div>
+                {% if not is_support and thread.student_id == user.id %}
+                <a href="/coaches/{{ thread.coach_profile_id }}" class="hover:text-blue-600 transition-colors">
+                    <h1
+                        class="text-3xl font-black text-slate-900 hover:underline decoration-4 decoration-blue-200 underline-offset-4">
+                        {{ partner_name }}</h1>
+                </a>
+                {% else %}
+                <h1 class="text-3xl font-black text-slate-900">{{ partner_name }}</h1>
+                {% endif %}
+                <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    線上對話中
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            {% if not is_support and thread.student_id == user.id %}
+            <button onclick="bookFromChat({{ thread.coach_profile_id }})"
+                class="hidden md:flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg hover:bg-black transition-all">
+                <i class="fas fa-calendar-check text-amber-500"></i>
+                預約教練
+            </button>
+            {% endif %}
+            <div class="text-right hidden md:block">
+                <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest">Inquiry ID</p>
+                <p class="text-xs font-black text-slate-900">#{{ thread.id }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Messages Window -->
+    <div
+        class="flex-grow bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/50 flex flex-col overflow-hidden">
+        <div id="messageWindow" class="flex-grow overflow-y-auto p-10 space-y-6 bg-slate-50/50 scroll-smooth">
+            {% for msg in messages %}
+            <div class="flex flex-col {% if msg.sender_id == user.id %} items-end {% else %} items-start {% endif %}">
+                <div class="message-content max-w-[75%] px-6 py-4 rounded-3xl text-sm font-medium shadow-sm whitespace-pre-wrap
+                        {% if msg.sender_id == user.id %}
+                            bg-slate-900 text-white rounded-tr-none
+                        {% else %}
+                            bg-white text-slate-700 border border-slate-100 rounded-tl-none
+                        {% endif %}">
+                    {{ msg.content }}
+                </div>
+                <span class="text-[9px] font-black text-slate-300 mt-2 px-2 uppercase">{{
+                    msg.created_at.strftime('%H:%M') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Chat Input Area -->
+        <div class="p-8 bg-white border-t border-slate-100 shrink-0">
+            <form action="{{ post_url }}" method="POST" enctype="multipart/form-data" class="relative group"
+                id="chatForm">
+                <input type="file" name="file" id="fileInput" class="hidden" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+
+                <button type="button" id="uploadBtn"
+                    class="absolute left-3 top-3 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all z-10"
+                    title="上傳附件 (圖片/文件)">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <div id="filePreview"
+                    class="hidden absolute left-14 top-3 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md max-w-[200px] truncate z-20">
+                </div>
+
+                <textarea name="content" required rows="1" id="chatInput" placeholder="輸入訊息..."
+                    class="w-full p-5 pl-14 pr-32 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none transition-all resize-none"></textarea>
+                <button type="submit"
+                    class="absolute right-3 top-2 bottom-2 px-8 premium-bg text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                    傳送 <i class="fas fa-paper-plane ml-1 text-[10px]"></i>
+                </button>
+            </form>
+            <p class="mt-4 text-[9px] font-bold text-slate-400 text-center uppercase tracking-[0.2em] italic">
+                我們將為您的對話內容提供端對端保障</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Link Parsing Logic
+    function formatMessageLinks() {
+        document.querySelectorAll('.message-content').forEach(el => {
+            // Use textContent to get raw text including newlines, avoiding layout-dependent innerText issues
+            let content = el.textContent;
+
+            // Check if there is anything to replace first to avoid unnecessary DOM updates
+            if (!content.includes('[附件]')) {
+                // Only convert newlines for consistency
+                el.innerHTML = content.replace(/\n/g, '<br>');
+                return;
+            }
+
+            // Regex to capture [附件] followed by a URL (relative or absolute)
+            // Capture until whitespace or end of string
+            // handle potential leading newline from the python append
+            content = content.replace(/(?:^|\s)\[附件\]\s+([^\s]+)/g, (match, url) => {
+                let cleanUrl = url.trim();
+                // Icon logic
+                let icon = 'fa-file-alt';
+                if (cleanUrl.match(/\.(jpg|jpeg|png|gif)$/i)) icon = 'fa-image';
+                else if (cleanUrl.match(/\.pdf$/i)) icon = 'fa-file-pdf';
+
+                return `<br><a href="${cleanUrl}" target="_blank" class="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-black hover:bg-white hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm">
+                        <i class="fas ${icon}"></i> 點擊查看附件
+                      </a>`;
+            });
+
+            el.innerHTML = content.replace(/\n/g, '<br>');
+        });
+    }
+
+    // Auto scroll to bottom
+    const messageWindow = document.getElementById('messageWindow');
+    window.onload = () => {
+        formatMessageLinks();
+        messageWindow.scrollTop = messageWindow.scrollHeight;
+
+        // Auto-expand textarea
+        const textarea = document.getElementById('chatInput');
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        });
+
+        // Submit on Enter (shift+enter for new line)
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                textarea.form.submit();
+            }
+        });
+
+        // File Upload Logic
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const filePreview = document.getElementById('filePreview');
+        const chatForm = document.getElementById('chatForm');
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                const name = fileInput.files[0].name;
+                filePreview.innerText = name;
+                filePreview.classList.remove('hidden');
+                uploadBtn.classList.add('text-blue-600', 'bg-blue-100');
+                textarea.required = false; // Not required if file present
+                textarea.placeholder = "附上檔案";
+            } else {
+                filePreview.classList.add('hidden');
+                uploadBtn.classList.remove('text-blue-600', 'bg-blue-100');
+                textarea.required = true;
+                textarea.placeholder = "輸入訊息...";
+            }
+        });
+    }
+    // Booking Function from Chat
+    async function bookFromChat(coachId) {
+        if (!confirm('確定要送出預約申請嗎？\n這將通知教練您有確認上課的意願，後續請留意教練的確認。')) return;
+
+        try {
+            const res = await fetch('/api/bookings/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coach_id: coachId, sport_type: 'fitness' })
+                // Defaulting to fitness for MVP or we could parse from context
+            });
+
+            if (res.ok) {
+                alert('預約申請已送出！\n您可以前往「學員中心」查看進度。');
+                window.location.href = '/account/student';
+            } else {
+                const err = await res.json();
+                alert('預約失敗: ' + (err.detail || '未知錯誤'));
+            }
+        } catch (e) { console.error(e); alert('系統忙碌中'); }
+    }
+</script>
+{% endblock %}

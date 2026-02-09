@@ -1,0 +1,310 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-10">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <a href="/account/coach"
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors mb-2 block">
+                <i class="fas fa-arrow-left mr-1"></i> 返回教練中心
+            </a>
+            <h1 class="text-3xl font-black text-slate-900">學員預約管理</h1>
+        </div>
+
+        <!-- Tab Switcher -->
+        <div class="flex bg-slate-100 p-1 rounded-xl">
+            <button onclick="switchTab('requested')" id="tab-requested"
+                class="px-4 py-2 rounded-lg text-xs font-black text-slate-500 transition-all hover:text-slate-900">
+                待確認 ({{ bookings_requested|length }})
+            </button>
+            <button onclick="switchTab('ongoing')" id="tab-ongoing"
+                class="px-4 py-2 rounded-lg text-xs font-black text-slate-500 transition-all hover:text-slate-900">
+                進行中課程 ({{ bookings_confirmed|length }})
+            </button>
+            <button onclick="switchTab('completed')" id="tab-completed"
+                class="px-4 py-2 rounded-lg text-xs font-black text-slate-500 transition-all hover:text-slate-900">
+                已完成紀錄 ({{ bookings_completed|length }})
+            </button>
+        </div>
+    </div>
+
+    <!-- Rejection Reason Modal -->
+    <div id="rejectionModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeRejectionModal()"></div>
+        <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 scale-95 opacity-0 transition-all duration-300"
+            id="rejContent">
+            <h3 class="text-xl font-black text-slate-900 mb-2">請輸入婉拒原因</h3>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">這項資訊將會顯示給學員查看</p>
+
+            <input type="hidden" id="rejBookingId">
+            <textarea id="rejReason" rows="4"
+                class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-rose-100 transition-all mb-4"
+                placeholder="例如：時段已滿、地點不便、或是需要學員補件資訊..."></textarea>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="closeRejectionModal()"
+                    class="h-12 rounded-xl text-xs font-black text-slate-400 hover:bg-slate-50 transition-colors">取消</button>
+                <button onclick="submitRejection()"
+                    class="h-12 bg-rose-600 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-200 hover:bg-rose-700 transition-all">確認婉拒</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Wait for Confirmation (Requested) -->
+    <div id="view-requested" class="tab-content hidden animate-in fade-in slide-in-from-bottom-2">
+        {% if bookings_requested %}
+        <div class="grid gap-4">
+            {% for b in bookings_requested %}
+            <div
+                class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm md:flex items-center justify-between group">
+                <div class="flex items-center gap-4 mb-4 md:mb-0">
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center text-xl font-black">
+                        {{ b.created_at.strftime('%d') }}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="font-black text-slate-900">{{ b.student_name }}</h3>
+                            <span
+                                class="px-2 py-0.5 bg-amber-100 text-amber-600 rounded text-[9px] font-bold">新申請</span>
+                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            申請時間：{{ b.created_at.strftime('%Y/%m/%d %H:%M') }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="openRejectionModal({{ b.id }})"
+                        class="px-5 py-2.5 rounded-xl border border-rose-100 text-rose-500 font-black text-xs hover:bg-rose-50 transition-colors">
+                        婉拒
+                    </button>
+                    <button onclick="handleBooking({{ b.id }}, 'confirm')"
+                        class="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-black text-xs shadow-lg hover:bg-black transition-colors">
+                        確認接單
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-20 bg-slate-50/50 border border-dashed border-slate-100 rounded-[2rem] text-center">
+            <div
+                class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                <i class="fas fa-inbox text-2xl"></i>
+            </div>
+            <p class="text-xs text-slate-400 font-bold">目前沒有需要確認的新預約</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 2. Ongoing (Confirmed) -->
+    <div id="view-ongoing" class="tab-content hidden animate-in fade-in slide-in-from-bottom-2">
+        {% if bookings_confirmed %}
+        <div class="grid gap-4">
+            {% for b in bookings_confirmed %}
+            <div
+                class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:border-emerald-100 transition-all group">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center text-xl font-black">
+                            <i class="fas fa-dumbbell"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-black text-slate-900">{{ b.student_name }}</h3>
+                                <span
+                                    class="px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded text-[9px] font-bold">進行中</span>
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                                已確認 • 等待上課
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col items-end gap-2">
+                        {% if b.thread_id %}
+                        <button onclick="window.location.href='/messages/{{ b.thread_id }}'"
+                            class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black hover:bg-blue-100 transition-colors">
+                            <i class="fas fa-comments mr-1"></i> 聯絡學員
+                        </button>
+                        {% endif %}
+
+                        {% if b.completed_by_student %}
+                        <button onclick="confirmCompletion({{ b.id }})"
+                            class="px-6 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black shadow-lg shadow-emerald-100 animate-pulse hover:bg-emerald-600 transition-all">
+                            學員已完成課程，點擊確認結案
+                        </button>
+                        {% else %}
+                        <span class="text-[10px] font-bold text-slate-300">等待學員確認完成</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-20 bg-slate-50/50 border border-dashed border-slate-100 rounded-[2rem] text-center">
+            <p class="text-xs text-slate-400 font-bold">目前沒有進行中的課程</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 3. Completed -->
+    <div id="view-completed" class="tab-content hidden animate-in fade-in slide-in-from-bottom-2">
+        {% if bookings_completed %}
+        <div class="grid gap-4">
+            {% for b in bookings_completed %}
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm transition-all">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-12 h-12 rounded-2xl {% if b.status == 'CANCELED' %}bg-rose-50 text-rose-300{% else %}bg-slate-100 text-slate-400{% endif %} flex items-center justify-center text-xl font-black">
+                            <i class="fas {% if b.status == 'CANCELED' %}fa-times{% else %}fa-check{% endif %}"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-black text-slate-900">{{ b.student_name }}</h3>
+                                {% if b.status == 'CANCELED' %}
+                                <span
+                                    class="px-2 py-0.5 bg-rose-50 text-rose-500 rounded text-[9px] font-bold">已婉拒</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                                {% if b.status == 'COMPLETED' and b.completed_at %}
+                                完成於 {{ b.completed_at.strftime('%Y/%m/%d %H:%M') }}
+                                {% else %}
+                                {{ b.created_at.strftime('%Y/%m/%d') }} 預約紀錄
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% if b.cancel_reason %}
+                    <div class="max-w-[40%] text-right">
+                        <span class="text-[9px] font-black text-slate-300 uppercase block mb-1">婉拒原因</span>
+                        <p class="text-[11px] font-bold text-rose-400 italic">{{ b.cancel_reason }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-20 bg-slate-50/50 border border-dashed border-slate-100 rounded-[2rem] text-center">
+            <p class="text-xs text-slate-400 font-bold">尚未有歷史課程紀錄</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Tab Logic
+    function switchTab(tabName) {
+        // Hide all
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+        // Reset buttons
+        const buttons = document.querySelectorAll('[id^="tab-"]');
+        buttons.forEach(btn => {
+            btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+            btn.classList.add('text-slate-500');
+        });
+
+        // Show active
+        const target = document.getElementById('view-' + tabName);
+        if (target) target.classList.remove('hidden');
+
+        // Highlight button
+        const btn = document.getElementById('tab-' + tabName);
+        if (btn) {
+            btn.classList.remove('text-slate-500');
+            btn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+        }
+
+        // Save state
+        localStorage.setItem('coach_lesson_tab', tabName);
+    }
+
+    // Modal Control
+    function openRejectionModal(bid) {
+        document.getElementById('rejBookingId').value = bid;
+        document.getElementById('rejReason').value = '';
+        const m = document.getElementById('rejectionModal');
+        const c = document.getElementById('rejContent');
+        m.classList.remove('hidden');
+        setTimeout(() => {
+            c.classList.remove('scale-95', 'opacity-0');
+            c.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeRejectionModal() {
+        const m = document.getElementById('rejectionModal');
+        const c = document.getElementById('rejContent');
+        c.classList.add('scale-95', 'opacity-0');
+        c.classList.remove('scale-100', 'opacity-100');
+        setTimeout(() => m.classList.add('hidden'), 300);
+    }
+
+    async function submitRejection() {
+        const id = document.getElementById('rejBookingId').value;
+        const reason = document.getElementById('rejReason').value;
+        if (!reason.trim()) {
+            alert('請務必輸入婉拒原因，讓學員知道情況喔！');
+            return;
+        }
+
+        await handleBooking(id, 'reject', reason);
+        closeRejectionModal();
+    }
+
+    // Init
+    window.addEventListener('load', () => {
+        const saved = localStorage.getItem('coach_lesson_tab') || 'requested';
+        switchTab(saved);
+    });
+
+    // Action Logic
+    async function handleBooking(id, action, reason = null) {
+        if (!confirm(action === 'confirm' ? '確定接受此預約嗎？' : '確定要婉拒此預約嗎？')) return;
+
+        try {
+            const body = {};
+            if (reason) body.reason = reason;
+
+            const res = await fetch(`/api/bookings/${id}/coach/${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                alert('操作成功！');
+                location.reload();
+            } else {
+                const err = await res.json();
+                alert('錯誤: ' + (err.detail || '未知錯誤'));
+            }
+        } catch (e) {
+            console.error(e);
+            alert('系統忙碌中');
+        }
+    }
+
+    async function confirmCompletion(id) {
+        if (!confirm('確認此課程已結束並要結案嗎？\n點擊後這筆課程將會移至「已完成」紀錄。')) return;
+        try {
+            const res = await fetch(`/api/bookings/${id}/complete`, { method: 'POST' });
+            if (res.ok) {
+                alert('結案成功！');
+                location.reload();
+            } else {
+                const j = await res.json();
+                alert('失敗: ' + (j.detail || '未知錯誤'));
+            }
+        } catch (e) { alert('系統錯誤'); }
+    }
+</script>
+{% endblock %}

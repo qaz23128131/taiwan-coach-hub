@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-10">
+    <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+        <div>
+            <span class="text-[10px] font-black text-purple-600 uppercase tracking-[0.2em] mb-2 block">Admin
+                Panel</span>
+            <h1 class="text-4xl font-black text-slate-900">教練審核中心</h1>
+        </div>
+
+        <nav class="flex gap-2 p-1.5 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            {% for st, label in [('pending_review', '待審核'), ('approved', '已通過'), ('rejected', '已退件'), ('suspended',
+            '已下架')] %}
+            <a href="/admin/reviews?status_filter={{ st }}"
+                class="px-5 py-2.5 rounded-xl text-xs font-bold transition-all {% if current_status == st %}bg-slate-900 text-white shadow-lg shadow-slate-900/20{% else %}text-slate-400 hover:text-slate-600{% endif %}">
+                {{ label }}
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+
+    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-100">
+                    <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">教練資訊</th>
+                    <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">運動項目</th>
+                    <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">服務城市</th>
+                    <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">送審時間</th>
+                    <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">操作</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+                {% for coach in coaches %}
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-8 py-6">
+                        <div class="flex items-center gap-4">
+                            <img src="{{ coach.avatar }}"
+                                class="w-10 h-10 rounded-full border border-slate-100 bg-white">
+                            <div>
+                                <p class="font-bold text-slate-900">{{ coach.display_name }}</p>
+                                <p class="text-[10px] text-slate-400 font-medium">{{ coach.id }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-8 py-6">
+                        <div class="flex flex-wrap gap-1">
+                            {% for sport in coach.sports | from_json %}
+                            <span class="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded uppercase">{{
+                                sport }}</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td class="px-8 py-6 text-xs font-bold text-slate-600">
+                        {{ coach.service_cities | from_json | join('、') or '全地區' }}
+                    </td>
+                    <td class="px-8 py-6 text-[11px] font-medium text-slate-400">
+                        {{ coach.submitted_at.strftime('%Y/%m/%d %H:%M') if coach.submitted_at else 'N/A' }}
+                    </td>
+                    <td class="px-8 py-6">
+                        <a href="/admin/coaches/{{ coach.id }}/preview"
+                            class="btn-base btn-secondary !h-10 !px-6 !text-[11px] !rounded-xl">詳情預覽</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="px-8 py-20 text-center">
+                        <div
+                            class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+                            <i class="fas fa-check-double text-2xl"></i>
+                        </div>
+                        <p class="text-slate-400 font-bold text-sm">目前沒有在此狀態下的教練</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

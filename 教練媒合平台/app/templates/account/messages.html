@@ -1,0 +1,170 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto pb-20 h-[85vh]">
+    <div class="h-full bg-white rounded-[3rem] shadow-2xl overflow-hidden flex">
+
+        <!-- Sidebar: Chat List -->
+        <div class="w-80 bg-slate-50 border-r border-slate-100 flex flex-col">
+            <div class="p-6 border-b border-slate-100">
+                <h1 class="text-xl font-black text-slate-900 mb-4">訊息中心</h1>
+                <p class="text-[10px] font-bold text-slate-400">客服支援與系統通知</p>
+            </div>
+
+            <!-- List -->
+            <div id="chatList" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <!-- Dynamic Items -->
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 flex flex-col bg-white" id="chatArea">
+            <!-- Header -->
+            <div class="h-20 border-b border-slate-50 px-8 flex items-center justify-between shrink-0">
+                <div id="chatHeader" class="hidden">
+                    <div class="flex items-center gap-3">
+                        <div id="headerAvatar"
+                            class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-black">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-black text-slate-900" id="headerTargetName">Chat</div>
+                            <div class="text-[10px] font-bold text-slate-400" id="headerSubject">Subject</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-slate-300 font-bold text-xs" id="emptyHeader">請選擇左側對話</div>
+            </div>
+
+            <!-- Messages -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-8 space-y-6 bg-white">
+                <!-- Dynamic Messages -->
+            </div>
+
+            <!-- Input -->
+            <div class="p-6 border-t border-slate-50 hidden" id="inputArea">
+                <form id="messageForm" class="flex gap-4">
+                    <input type="text" name="content" placeholder="輸入訊息回覆..." required
+                        class="flex-1 h-12 bg-slate-50 rounded-2xl px-6 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-slate-100 transition-all">
+                    <button type="submit"
+                        class="h-12 px-8 bg-slate-900 text-white rounded-2xl text-xs font-black hover:bg-slate-800 transition-all">
+                        發送
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeChatId = null;
+
+    async function init() {
+        await loadChats();
+    }
+
+    async function loadChats() {
+        try {
+            const res = await fetch(`/api/account/conversations`);
+            const chats = await res.json();
+            const list = document.getElementById('chatList');
+            list.innerHTML = '';
+
+            chats.forEach(chat => {
+                const isActive = chat.id === activeChatId;
+                const activeClass = isActive ? 'bg-slate-50 ring-1 ring-slate-100' : 'hover:bg-slate-50/50';
+
+                // Avatar Logic
+                const avatarBg = chat.type === 'admin' ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-500';
+                const avatarTxt = chat.type === 'admin' ? '<i class="fas fa-shield-alt text-xs"></i>' : chat.avatar;
+
+                list.innerHTML += `
+                <div onclick="selectChat('${chat.id}')" class="p-4 rounded-2xl cursor-pointer transition-all ${activeClass}">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center text-[10px] font-black shrink-0">
+                            ${avatarTxt}
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="text-sm font-black text-slate-900 truncate">${chat.target_name}</div>
+                            <div class="text-[10px] text-slate-400 font-bold truncate">${chat.subject}</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-[9px] font-bold text-slate-300">${chat.display_time}</span>
+                         ${chat.unread ? '<span class="text-[9px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">未讀</span>' : ''}
+                    </div>
+                </div>`;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function selectChat(id) {
+        activeChatId = id;
+        loadChats(); // Refresh list highlights
+
+        document.getElementById('inputArea').classList.remove('hidden');
+        document.getElementById('chatHeader').classList.remove('hidden');
+        document.getElementById('emptyHeader').classList.add('hidden');
+
+        try {
+            const res = await fetch(`/api/account/conversations/${id}`);
+            const data = await res.json();
+
+            // Header
+            document.getElementById('headerTargetName').innerText = data.target_name;
+            document.getElementById('headerSubject').innerText = data.subject;
+
+            const avatarDiv = document.getElementById('headerAvatar');
+            if (activeChatId.startsWith('admin')) {
+                avatarDiv.className = "w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-black";
+                avatarDiv.innerHTML = '<i class="fas fa-shield-alt"></i>';
+            } else {
+                avatarDiv.className = "w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-black";
+                avatarDiv.innerText = data.target_name[0];
+            }
+
+            // Messages
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+
+            data.messages.forEach(msg => {
+                const isMe = msg.is_me;
+                const align = isMe ? 'ml-auto items-end' : 'mr-auto items-start';
+                const bg = isMe ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600';
+
+                container.innerHTML += `
+                <div class="flex flex-col ${align} max-w-[70%]">
+                    <div class="px-5 py-3 rounded-2xl text-sm font-bold ${bg}">
+                        ${msg.content}
+                    </div>
+                    <div class="text-[9px] font-bold text-slate-300 mt-1 px-1">
+                        ${msg.sender_name} • ${msg.created_at}
+                    </div>
+                </div>`;
+            });
+
+            container.scrollTop = container.scrollHeight;
+
+        } catch (e) { console.error(e); }
+    }
+
+    document.getElementById('messageForm').onsubmit = async (e) => {
+        e.preventDefault();
+        if (!activeChatId) return;
+
+        const content = e.target.content.value;
+        e.target.content.value = '';
+
+        try {
+            await fetch(`/api/account/conversations/${activeChatId}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            });
+            selectChat(activeChatId); // Refresh
+        } catch (e) { alert('Failed to send'); }
+    };
+
+    init();
+</script>
+{% endblock %}

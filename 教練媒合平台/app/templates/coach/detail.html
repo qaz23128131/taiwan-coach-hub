@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto pb-20 px-4">
+    <!-- Success Alert -->
+    {% if request.query_params.get('success') %}
+    <div
+        class="bg-blue-600 text-white px-8 py-10 rounded-[2.5rem] mb-12 shadow-2xl shadow-blue-900/20 relative overflow-hidden">
+        <div class="relative z-10 flex flex-col md:flex-row items-center gap-8">
+            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                <i class="fas fa-paper-plane text-2xl"></i>
+            </div>
+            <div>
+                <h3 class="text-2xl font-bold mb-2">需求已成功送出！</h3>
+                <p class="text-blue-100 text-sm leading-relaxed max-w-2xl">
+                    教練通常會在 24 小時內回覆。請留意您留下的聯繫管道。
+                </p>
+            </div>
+            <a href="/coaches" class="md:ml-auto btn-base bg-white text-blue-600 !h-12 !px-8">返回名單</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Preview Label for Admin -->
+    {% if request.query_params.get('preview') == '1' %}
+    <div class="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-in slide-in-from-top duration-500">
+        <div
+            class="bg-indigo-600 text-white px-8 py-3 rounded-full flex items-center gap-3 shadow-2xl border-4 border-white font-black text-sm">
+            <i class="fas fa-user-shield"></i>
+            <span>管理員預覽模式 ｜ 未核准前不對外顯示</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Status Alert for Public -->
+    {% if coach.status != 'APPROVED' %}
+    <div
+        class="bg-amber-50 border border-amber-100 p-8 rounded-[3rem] mb-12 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-6">
+            <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-amber-600">
+                <i class="fas fa-clock text-2xl"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-black text-amber-900">此頁面目前正在審核中</h3>
+                <p class="text-xs font-bold text-amber-700/70">該帳號內容正在接受管理員核驗，暫時不對外開放預約。</p>
+            </div>
+        </div>
+        <a href="/coaches"
+            class="h-12 px-8 bg-amber-600 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center">返回教練列表</a>
+    </div>
+    {% endif %}
+
+    {% include "coach/detail_content.html" %}
+</div>
+{% endblock %}

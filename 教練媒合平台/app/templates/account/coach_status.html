@@ -1,0 +1,574 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-10">
+    <div class="mb-12 flex items-center justify-between">
+        <div>
+            <a href="/account"
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors mb-2 block">
+                <i class="fas fa-arrow-left mr-1"></i> 返回帳戶中心
+            </a>
+            <h1 class="text-4xl font-black text-slate-900">教練中心</h1>
+        </div>
+    </div>
+
+    {% if not coach %}
+    <!-- Initial Apply Screen -->
+    <div class="bg-white p-12 rounded-[3.5rem] border border-slate-100 shadow-2xl text-center space-y-8">
+        <div class="w-24 h-24 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto text-blue-600">
+            <i class="fas fa-bullhorn text-4xl"></i>
+        </div>
+        <div class="max-w-md mx-auto space-y-4">
+            <h2 class="text-3xl font-black text-slate-900">成為專業運動教練</h2>
+            <p class="text-slate-500 font-medium leading-relaxed">
+                在平台上展示您的專業，並與尋找您的學員建立聯繫。只需填寫您的資歷與收費資訊，即可提交審核。
+            </p>
+        </div>
+        <a href="/account/coach/apply"
+            class="inline-flex items-center gap-4 h-16 px-12 premium-bg text-white rounded-2xl font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+            <span>立即開始申請</span>
+            <i class="fas fa-arrow-right text-xs"></i>
+        </a>
+    </div>
+    {% else %}
+    {% if coach.status == 'REJECTED' %}
+    <!-- Rejection Alert -->
+    <div
+        class="bg-rose-50 border border-rose-100 p-8 rounded-[3rem] mb-6 flex flex-col md:flex-row items-start gap-6 animate-in slide-in-from-top duration-500">
+        <div class="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600 shrink-0">
+            <i class="fas fa-exclamation-triangle text-2xl"></i>
+        </div>
+        <div class="flex-grow space-y-3">
+            <h3 class="text-lg font-black text-rose-900">審核未通過，請修正並再次送審</h3>
+
+            {% set reasons = coach.reject_reasons_json|from_json %}
+            {% set reason_map = {
+            'avatar_invalid': '頭像不清楚或不合規',
+            'profile_too_short': '自我介紹內容過少',
+            'missing_price_or_region': '價格或服務地區未完成',
+            'tag_mismatch': '標籤選擇不一致',
+            'missing_required_fields': '必填欄位未完成',
+            'need_more_proof': '需要補充證明或說明'
+            } %}
+
+            <div class="flex flex-wrap gap-2">
+                {% for r in reasons %}
+                {% set anchor = 'section-core' %}
+                {% if r == 'tag_mismatch' %}{% set anchor = 'section-tags' %}{% endif %}
+                <a href="/account/coach/edit#{{ anchor }}"
+                    class="px-3 py-1 bg-white border border-rose-200 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all">
+                    {{ reason_map.get(r, r) }}
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if coach.reject_reason %}
+            <div class="p-4 bg-white/50 rounded-xl border-l-4 border-rose-400">
+                <p class="text-[11px] font-bold text-rose-800 leading-relaxed italic">
+                    管理員備註：{{ coach.reject_reason }}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        <a href="/account/coach/edit"
+            class="h-14 px-8 bg-rose-600 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 shadow-xl shadow-rose-600/20 active:scale-95 transition-all w-full md:w-auto">
+            <i class="fas fa-edit"></i> 立即前往修正
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Workstation Dashboard -->
+    <div class="space-y-6">
+        <!-- Main Info Card -->
+        <div
+            class="bg-white p-8 md:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-bottom duration-700">
+            <div class="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 opacity-50"></div>
+
+            <div class="flex flex-col lg:flex-row items-center gap-10 relative z-10">
+                <!-- Large Profile Pic -->
+                <div class="shrink-0 relative">
+                    <div
+                        class="w-28 h-28 md:w-32 md:h-32 rounded-[2.5rem] overflow-hidden bg-slate-50 border border-slate-100 shadow-inner">
+                        {% if coach.avatar %}
+                        <img src="{{ coach.avatar }}" class="w-full h-full object-cover">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Info Body -->
+                <div class="flex-grow min-w-0 text-center lg:text-left space-y-4">
+                    <div class="space-y-1">
+                        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4">
+                            <h2
+                                class="text-3xl md:text-4xl font-black text-slate-900 truncate max-w-full lg:max-w-[420px]">
+                                {{ coach.display_name }}
+                            </h2>
+                            {% if coach.is_verified %}
+                            <i class="fas fa-check-circle text-blue-500 text-xl shrink-0" title="已驗證教練"></i>
+                            {% endif %}
+                        </div>
+
+                        <!-- Status Badge Inline -->
+                        <div class="flex flex-col lg:flex-row items-center justify-center lg:justify-start gap-3 mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full 
+                                    {% if coach.status == 'APPROVED' %} bg-emerald-500 animate-pulse 
+                                    {% elif coach.status == 'PENDING' %} bg-amber-500 
+                                    {% elif coach.status == 'SUSPENDED' %} bg-rose-500 animate-bounce
+                                    {% else %} bg-slate-400 {% endif %}"></span>
+                                <span
+                                    class="text-[11px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">
+                                    帳號狀態：
+                                    {% if coach.status == 'APPROVED' %}
+                                    <span class="text-emerald-600">已公開上架</span>
+                                    {% elif coach.status == 'PENDING' %}
+                                    <span class="text-amber-600">審核中</span>
+                                    {% elif coach.status == 'SUSPENDED' %}
+                                    <span class="text-rose-600">暫停上架</span>
+                                    {% else %}
+                                    未開啟連結
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            <!-- Subscription Badge -->
+                            <div class="flex items-center gap-2 pl-3 lg:border-l border-slate-100">
+                                <i
+                                    class="fas fa-gem {% if current_plan.plan_id == 'elite' %}text-purple-500{% elif current_plan.plan_id == 'pro' %}text-blue-500{% else %}text-slate-300{% endif %} text-[10px]"></i>
+                                <span class="text-[11px] font-black uppercase tracking-widest">
+                                    會員方案：
+                                    <span
+                                        class="{% if current_plan.plan_id == 'elite' %}text-purple-600{% elif current_plan.plan_id == 'pro' %}text-blue-600{% else %}text-slate-500{% endif %}">
+                                        {{ current_plan.name_zh }}
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-center lg:justify-start gap-2">
+                        {% for s in coach.sports|from_json %}
+                        <span
+                            class="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg text-[10px] font-black uppercase">{{
+                            s }}</span>
+                        {% endfor %}
+                    </div>
+
+                    <div
+                        class="flex items-center justify-center lg:justify-start gap-4 pt-2 text-[10px] font-bold text-slate-400">
+                        <span class="flex items-center gap-1.5"><i class="fas fa-location-dot text-slate-300"></i> {{
+                            (coach.service_cities|from_json)|join('、') }} {{
+                            (coach.service_districts|from_json)|join('、') }}</span>
+                    </div>
+                </div>
+
+                <!-- Action Group -->
+                <div class="shrink-0 w-full lg:w-48 flex flex-col gap-3">
+                    <a href="/coach/upgrade"
+                        class="h-12 w-full {% if current_plan.plan_id == 'free' %}bg-blue-600{% else %}bg-slate-900{% endif %} text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10 hover:translate-y-[-2px] transition-all">
+                        <i class="fas fa-rocket"></i> {% if current_plan.plan_id == 'free' %}升級方案{% else %}會員中心{% endif
+                        %}
+                    </a>
+                    <a href="/account/coach/edit"
+                        class="h-12 w-full bg-slate-50 text-slate-600 border border-slate-100 rounded-2xl font-black text-[10px] flex items-center justify-center gap-2 hover:bg-white hover:shadow-md transition-all">
+                        <i class="fas fa-edit text-[10px]"></i> 編輯檔案
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Dashboard Section -->
+        <div class="space-y-6">
+            <div class="flex items-end justify-between px-2">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900">數據成效儀表板</h2>
+                    <p class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                        統計範圍：{{ kpi_data.period_label }}
+                        {% if coach.subscription_level == 'elite' %}<span class="text-amber-500 ml-2">● Elite
+                            即時分析</span>{% endif %}
+                    </p>
+                </div>
+                {% if coach.subscription_level == 'basic' %}
+                <a href="/coach/upgrade"
+                    class="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
+                    <i class="fas fa-lock mr-1"></i> 解鎖完整數據
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Top Metric Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- 1. Views (Visible to All) -->
+                <div
+                    class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:border-blue-100 transition-all">
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">頁面瀏覽</span>
+                    <div class="flex items-end justify-between relative z-10">
+                        <span class="text-3xl font-black text-slate-900">{{ kpi_data.views }}</span>
+                        {% if kpi_data.trends.views >= 0 %}
+                        <span
+                            class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <i class="fas fa-arrow-up text-[9px]"></i> {{ kpi_data.trends.views }}%
+                        </span>
+                        {% else %}
+                        <span
+                            class="text-[10px] font-bold text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <i class="fas fa-minus text-[9px]"></i>
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 2. Favorites (Lock for Basic) -->
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                    {% if coach.subscription_level == 'basic' %}
+                    <div class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                        <i class="fas fa-lock text-slate-300 text-xl"></i>
+                    </div>
+                    {% endif %}
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">收藏關注</span>
+                    <div class="flex items-end justify-between">
+                        <span class="text-3xl font-black text-slate-900">{{ kpi_data.favorites }}</span>
+                    </div>
+                </div>
+
+                <!-- 3. Inquiries (Lock for Basic) -->
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group">
+                    {% if coach.subscription_level == 'basic' %}
+                    <div class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                        <i class="fas fa-lock text-slate-300 text-xl"></i>
+                    </div>
+                    {% endif %}
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">諮詢機會</span>
+                    <div class="flex items-end justify-between">
+                        <span class="text-3xl font-black text-slate-900">{{ kpi_data.inquiries }}</span>
+                        {% if kpi_data.trends.inquiries > 0 %}
+                        <span class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">+{{
+                            kpi_data.trends.inquiries }}%</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 4. Bookings (Lock for Basic) -->
+                <div class="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:border-emerald-200 transition-all cursor-pointer"
+                    onclick="{% if coach.subscription_level != 'basic' %}window.location.href='/account/coach/lessons'{% endif %}">
+                    {% if coach.subscription_level == 'basic' %}
+                    <div class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                        <i class="fas fa-lock text-slate-300 text-xl"></i>
+                    </div>
+                    {% endif %}
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">成功預約</span>
+                    <div class="flex items-end justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-3xl font-black text-slate-900">{{ kpi_data.bookings }}</span>
+                            {% if coach.subscription_level != 'basic' %}
+                            <span
+                                class="text-[10px] font-black text-emerald-500 mt-1 flex items-center gap-1 group-hover:gap-2 transition-all">
+                                進入課程中心 <i class="fas fa-arrow-right text-[8px]"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                        <i
+                            class="fas fa-calendar-check text-slate-100/50 opacity-0 group-hover:opacity-100 transition-all duration-500 text-3xl absolute -bottom-1 -right-1 translate-y-4 group-hover:translate-y-0"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deep Dive: Funnel & Insights -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Funnel Chart (Occupies 2 cols) -->
+                <div
+                    class="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 relative overflow-hidden">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-lg font-black text-slate-900">漏斗轉換分析</h3>
+                            <p class="text-[10px] font-bold text-slate-400 mt-1">從曝光到成交的用戶旅程</p>
+                        </div>
+                        {% if coach.subscription_level == 'elite' %}
+                        <span class="text-[9px] font-black text-amber-500 bg-amber-50 px-2 py-1 rounded-lg">Elite
+                            全透視</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Funnel Body -->
+                    {% if coach.subscription_level == 'basic' %}
+                    <!-- Basic: Locked -->
+                    <div
+                        class="absolute inset-x-0 bottom-0 top-24 bg-white/80 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-8">
+                        <div
+                            class="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mb-4 text-2xl">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <h4 class="text-base font-black text-slate-900 mb-2">解鎖完整漏斗數據</h4>
+                        <p class="text-xs font-bold text-slate-400 mb-6 max-w-xs">升級方案以查看潛在學員在「瀏覽 -> 諮詢 -> 預約」的哪個環節流失
+                        </p>
+                        <a href="/coach/upgrade"
+                            class="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs shadow-lg shadow-slate-900/20">立即升級</a>
+                    </div>
+                    <!-- Mock Background -->
+                    <div class="space-y-4 opacity-10 grayscale">
+                        <div class="h-8 bg-slate-200 rounded-lg w-full"></div>
+                        <div class="h-8 bg-slate-200 rounded-lg w-3/4"></div>
+                        <div class="h-8 bg-slate-200 rounded-lg w-1/2"></div>
+                    </div>
+
+                    {% elif coach.subscription_level == 'pro' %}
+                    <!-- Pro: Simple Funnel (No Impression, No Interaction) -->
+                    <div class="space-y-6">
+                        <!-- Step 1: Views -->
+                        <div class="relative">
+                            <div class="flex justify-between text-xs font-bold text-slate-600 mb-1.5 px-1">
+                                <span><i class="fas fa-eye w-5 text-slate-400"></i> 教練頁瀏覽</span>
+                                <span>{{ kpi_data.views }}</span>
+                            </div>
+                            <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 rounded-full" style="width: 100%"></div>
+                            </div>
+                        </div>
+                        <!-- Step 2: Inquiries -->
+                        <div class="relative">
+                            <div class="flex justify-between text-xs font-bold text-slate-600 mb-1.5 px-1">
+                                <span><i class="fas fa-comment-dots w-5 text-slate-400"></i> 發送諮詢</span>
+                                <span>{{ kpi_data.inquiries }}</span>
+                            </div>
+                            <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-blue-500 rounded-full"
+                                    style="width: {{ (kpi_data.inquiries/kpi_data.views*100) if kpi_data.views > 0 else 0 }}%">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Step 3: Bookings -->
+                        <div class="relative">
+                            <div class="flex justify-between text-xs font-bold text-slate-600 mb-1.5 px-1">
+                                <span><i class="fas fa-check-circle w-5 text-slate-400"></i> 成功預約</span>
+                                <span>{{ kpi_data.bookings }}</span>
+                            </div>
+                            <div class="h-3 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-emerald-500 rounded-full"
+                                    style="width: {{ (kpi_data.bookings/kpi_data.views*100) if kpi_data.views > 0 else 0 }}%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                            <p class="text-[10px] font-bold text-slate-400">您正在使用 Pro 方案。升級 Elite 可解鎖「曝光源頭分析」與「互動細節」。
+                            </p>
+                        </div>
+                    </div>
+
+                    {% else %}
+                    <!-- Elite: Full Granular Funnel -->
+                    <div class="space-y-5">
+                        <!-- 1. Impression -->
+                        <div class="group">
+                            <div class="flex justify-between text-xs font-black text-slate-700 mb-1.5 px-1">
+                                <span class="flex items-center gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-indigo-200"></div> 搜尋/列表曝光
+                                </span>
+                                <span>{{ kpi_data.impressions }}</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-50 rounded-full overflow-hidden flex">
+                                <div class="h-full bg-indigo-200 w-full"></div>
+                            </div>
+                        </div>
+
+                        <!-- Dropoff Badge -->
+                        <div class="pl-4 -my-1 relative z-10">
+                            <span
+                                class="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+                                <i class="fas fa-arrow-down text-[8px] mr-0.5"></i>流失 {{ 100 - kpi_data.rates.ctr }}%
+                            </span>
+                        </div>
+
+                        <!-- 2. Profile View -->
+                        <div class="group">
+                            <div class="flex justify-between text-xs font-black text-slate-700 mb-1.5 px-1">
+                                <span class="flex items-center gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-blue-500"></div> 教練頁瀏覽
+                                </span>
+                                <span>{{ kpi_data.views }}</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-50 rounded-full overflow-hidden flex">
+                                <div class="h-full bg-blue-500 transition-all duration-1000"
+                                    style="width: {{ kpi_data.rates.ctr }}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Interaction -->
+                        <div class="group">
+                            <div class="flex justify-between text-xs font-black text-slate-700 mb-1.5 px-1">
+                                <span class="flex items-center gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-amber-400"></div> 深度互動 (點擊/收藏)
+                                </span>
+                                <span>{{ kpi_data.interactions }}</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-50 rounded-full overflow-hidden flex">
+                                <div class="h-full bg-amber-400 transition-all duration-1000"
+                                    style="width: {{ (kpi_data.interactions/kpi_data.impressions*100) if kpi_data.impressions > 0 else 0 }}%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Inquiry -->
+                        <div class="group">
+                            <div class="flex justify-between text-xs font-black text-slate-700 mb-1.5 px-1">
+                                <span class="flex items-center gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-purple-500"></div> 送出諮詢
+                                </span>
+                                <span>{{ kpi_data.inquiries }}</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-50 rounded-full overflow-hidden flex">
+                                <div class="h-full bg-purple-500 transition-all duration-1000"
+                                    style="width: {{ (kpi_data.inquiries/kpi_data.impressions*100) if kpi_data.impressions > 0 else 0 }}%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. Booking -->
+                        <div class="group">
+                            <div class="flex justify-between text-xs font-black text-slate-700 mb-1.5 px-1">
+                                <span class="flex items-center gap-2">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> 成功預約 (成交)
+                                </span>
+                                <span>{{ kpi_data.bookings }}</span>
+                            </div>
+                            <div class="h-2.5 bg-slate-50 rounded-full overflow-hidden flex">
+                                <div class="h-full bg-emerald-500 transition-all duration-1000"
+                                    style="width: {{ (kpi_data.bookings/kpi_data.impressions*100) if kpi_data.impressions > 0 else 0 }}%">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Insights Column (Pro/Elite Only) -->
+                {% if coach.subscription_level == 'basic' %}
+                <div
+                    class="lg:col-span-1 bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100/50 flex items-center justify-center text-center">
+                    <div class="space-y-2">
+                        <i class="fas fa-lightbulb text-4xl text-slate-200 mb-2"></i>
+                        <p class="text-xs font-bold text-slate-400">解鎖後可查看優化建議</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="lg:col-span-1 flex flex-col gap-6">
+                    <!-- Diagnostic / Advice (Dynamic Rule-Based) -->
+                    <div
+                        class="bg-indigo-600 p-8 rounded-[2rem] shadow-lg shadow-indigo-500/20 text-white relative overflow-hidden h-full">
+                        <div class="absolute top-0 right-0 w-48 h-48 bg-white rounded-full -mr-24 -mt-24 opacity-10">
+                        </div>
+
+                        <h3 class="text-sm font-black mb-4 relative z-10 flex items-center gap-2">
+                            <i class="fas fa-robot"></i> 智能診斷建議
+                        </h3>
+
+                        <ul class="space-y-4 text-[11px] font-bold text-indigo-100 relative z-10 leading-relaxed">
+                            {% if kpi_data.views == 0 %}
+                            <li class="flex items-start gap-2">
+                                <i class="fas fa-exclamation-circle mt-0.5 text-amber-300"></i>
+                                <span>尚無瀏覽數據：建議到<a href="/account/coach/edit"
+                                        class="text-white underline decoration-dashed underline-offset-4">編輯頁面</a>完善您的個人標籤與服務地區，增加被搜尋到的機會。</span>
+                            </li>
+                            {% elif kpi_data.rates.interact < 5 %} <li class="flex items-start gap-2">
+                                <i class="fas fa-eye mt-0.5 text-blue-300"></i>
+                                <span>訪客互動偏低 ({{ kpi_data.rates.interact }}%)：建議<a href="/account/coach/edit"
+                                        class="text-white underline decoration-dashed underline-offset-4">新增更多作品集圖片</a>或精選方案，吸引學員停留。</span>
+                                </li>
+                                {% elif kpi_data.inquiries == 0 %}
+                                <li class="flex items-start gap-2">
+                                    <i class="fas fa-comment-dots mt-0.5 text-pink-300"></i>
+                                    <span>學員還在觀望：試著在自我介紹中加入「歡迎免費諮詢」的引導文字，降低學員心理門檻。</span>
+                                </li>
+                                {% elif kpi_data.rates.conversion < 20 %} <li class="flex items-start gap-2">
+                                    <i class="fas fa-hand-holding-usd mt-0.5 text-emerald-300"></i>
+                                    <span>諮詢轉換有優化空間：建議在對話中主動發送<a href="/messages"
+                                            class="text-white underline decoration-dashed underline-offset-4">課程預約連結</a>，引導學員成交。</span>
+                                    </li>
+                                    {% else %}
+                                    <li class="flex items-start gap-2">
+                                        <i class="fas fa-trophy mt-0.5 text-yellow-300"></i>
+                                        <span>太棒了！您的轉換率表現優異，請保持目前的經營模式，並持續更新內容。</span>
+                                    </li>
+                                    {% endif %}
+
+                                    {% if coach.features_media|length < 3 %} <li
+                                        class="flex items-start gap-2 pt-2 border-t border-white/10">
+                                        <i class="fas fa-images mt-0.5 text-indigo-300"></i>
+                                        <span>作品集豐富度不足：建議至少上傳 3 張以上的專業照片。</span>
+                                        </li>
+                                        {% endif %}
+                        </ul>
+
+                        {% if coach.subscription_level != 'elite' %}
+                        <div class="mt-6 pt-6 border-t border-white/10">
+                            <p class="text-xs font-bold text-indigo-200 mb-3">升級 Elite 解鎖更深度的數據洞察</p>
+                            <a href="/coach/upgrade"
+                                class="inline-block px-4 py-2 bg-white text-indigo-600 rounded-lg text-[10px] font-black uppercase shadow-sm">查看方案</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+
+
+        <!-- Recent Conversations -->
+        <div class="bg-white p-8 md:p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-xl font-black text-slate-900">最近對話列表</h2>
+                <a href="/messages"
+                    class="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">查看全部 <i
+                        class="fas fa-arrow-right ml-1"></i></a>
+            </div>
+
+            {% if threads %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for thread in threads[:4] %}
+                <a href="/messages/{{ thread.id }}"
+                    class="flex items-center gap-5 p-6 rounded-3xl border border-slate-50 hover:bg-slate-50 hover:border-slate-100 transition-all group">
+                    {{ render_avatar(thread.partner_avatar, thread.partner_name, None, 'md') }}
+                    <div class="flex-grow min-w-0">
+                        <div class="flex justify-between items-center mb-1">
+                            <h4
+                                class="font-black text-slate-900 group-hover:text-blue-600 transition-colors text-sm truncate pr-2">
+                                {{ thread.partner_name }}</h4>
+                            <span class="text-[10px] font-bold text-slate-300 shrink-0">{{
+                                thread.updated_at.strftime('%m/%d %H:%M') }}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 truncate font-medium">{{ thread.last_message or '尚未有訊息' }}
+                        </p>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="py-16 bg-slate-50/50 rounded-[2.5rem] text-center border border-dashed border-slate-100">
+                <i class="fas fa-comments text-slate-200 text-3xl mb-4"></i>
+                <p class="text-xs text-slate-400 font-bold">目前尚無學員諮詢對話</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Rejected Notice if applicable -->
+        {% if coach.status == 'REJECTED' %}
+        <div class="bg-rose-50 border border-rose-100 p-8 rounded-[3rem] space-y-4">
+            <p class="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-2">
+                <i class="fas fa-circle-exclamation"></i> 申請未通過
+            </p>
+            <div
+                class="text-rose-700 text-sm font-bold leading-relaxed bg-white/50 p-6 rounded-2xl border border-rose-100/50">
+                {{ coach.reject_reason }}
+            </div>
+            <a href="/account/coach/edit"
+                class="inline-flex items-center px-10 h-14 bg-rose-600 text-white rounded-2xl font-black text-xs shadow-lg shadow-rose-200 hover:scale-105 active:scale-95 transition-all">
+                重新編輯並提交審核
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

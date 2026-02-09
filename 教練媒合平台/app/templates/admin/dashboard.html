@@ -1,0 +1,129 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto pb-20">
+    <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 mb-2">管理者中心</h1>
+            <div class="flex items-center gap-4">
+                <p class="text-slate-500 text-sm">審核教練資歷、管理平台內容與狀態</p>
+                <span class="text-slate-200">|</span>
+                <a href="/admin/cases" class="text-blue-600 text-sm font-bold hover:underline flex items-center gap-1">
+                    <i class="fas fa-gavel text-xs"></i> 案件管理中心
+                </a>
+                <span class="text-slate-200">|</span>
+                <a href="/admin/messages"
+                    class="text-blue-600 text-sm font-bold hover:underline flex items-center gap-1">
+                    <i class="fas fa-comments text-xs"></i> 訊息中心
+                </a>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/50">
+            <button
+                class="px-5 py-2.5 rounded-xl text-xs font-bold bg-white shadow-sm text-slate-900 border border-slate-200/50">待審核</button>
+            <button
+                class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 transition">已驗證</button>
+            <button
+                class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-700 transition">已下架</button>
+        </div>
+    </div>
+
+    <!-- Efficiency Table -->
+    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100">
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">教練資訊</th>
+                        <th class="px-6 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">主攻項目</th>
+                        <th class="px-6 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">服務區域</th>
+                        <th class="px-6 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">當前狀態</th>
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">
+                            管理操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% if coaches %}
+                    {% for coach in coaches %}
+                    <tr class="hover:bg-slate-50/50 transition group">
+                        <td class="px-8 py-6">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+                                    <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ coach.display_name }}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf"
+                                        class="w-full h-full object-contain">
+                                </div>
+                                <div>
+                                    <div class="font-bold text-slate-900 mb-0.5 text-sm">{{ coach.display_name or '未填寫'
+                                        }}</div>
+                                    <div class="text-[10px] text-slate-400 font-medium">UID: {{ coach.user_id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-6">
+                            <div class="flex flex-wrap gap-1 max-w-[120px]">
+                                {% for sport in coach.sports %}
+                                <span
+                                    class="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{{
+                                    sport }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-6 font-medium text-slate-600 text-xs">
+                            {{ coach.regions|join('、') or '-' }}
+                        </td>
+                        <td class="px-6 py-6">
+                            {% if coach.is_verified %}
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-100">
+                                <span class="w-1 h-1 bg-emerald-600 rounded-full"></span> 已驗證
+                            </span>
+                            {% else %}
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[10px] font-bold border border-amber-100">
+                                <span class="w-1 h-1 bg-amber-600 rounded-full"></span> 待審核
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-6 text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="/coaches/{{ coach.id }}" target="_blank"
+                                    class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition"
+                                    title="預覽頁面">
+                                    <i class="far fa-eye text-xs"></i>
+                                </a>
+
+                                {% if not coach.is_verified %}
+                                <form action="/admin/verify/{{ coach.id }}" method="POST"
+                                    onsubmit="return confirm('確認此位教練通過實名驗證？');">
+                                    <button type="submit"
+                                        class="h-9 px-4 bg-blue-600 text-white text-[11px] font-bold rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-500/20">
+                                        通過審核
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <button
+                                    class="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-100 text-slate-300 hover:text-red-500 hover:border-red-100 transition"
+                                    title="下架標籤">
+                                    <i class="fas fa-ban text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-32 text-center text-slate-400 italic text-sm">
+                            目前沒有教練名單
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

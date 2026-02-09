@@ -1,0 +1,164 @@
+{% extends "layout.html" %}
+{% from "macros/avatar.html" import render_avatar %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-10 px-4">
+    <!-- Header -->
+    <div class="mb-10 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+            <a href="/account/student"
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors mb-2 block">
+                <i class="fas fa-arrow-left mr-1"></i> 返回學員中心
+            </a>
+            <h1 class="text-4xl font-black text-slate-900">我的收藏教練</h1>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Saved Coaches for Future
+                Learning</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="p-1 bg-slate-100/50 rounded-2xl flex gap-1 font-black text-xs overflow-x-auto">
+            <button onclick="filterFavorites('all')" id="tab_all"
+                class="px-6 py-3 rounded-xl bg-white shadow-sm text-slate-900 transition-all tab-btn">全部</button>
+            <button onclick="filterFavorites('fitness')" id="tab_fitness"
+                class="px-6 py-3 rounded-xl text-slate-400 hover:text-slate-600 transition-all tab-btn">健身</button>
+            <button onclick="filterFavorites('diving')" id="tab_diving"
+                class="px-6 py-3 rounded-xl text-slate-400 hover:text-slate-600 transition-all tab-btn">潛水</button>
+            <button onclick="filterFavorites('skiing')" id="tab_skiing"
+                class="px-6 py-3 rounded-xl text-slate-400 hover:text-slate-600 transition-all tab-btn">滑雪</button>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div id="favoritesGrid"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <!-- JS Populated -->
+        <div class="col-span-full py-20 text-center text-slate-300 font-black text-sm">載入中...</div>
+    </div>
+</div>
+
+<script>
+    let allGroups = [];
+
+    async function loadFavorites(sport = null) {
+        const grid = document.getElementById('favoritesGrid');
+
+        // Update Tabs
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('bg-white', 'shadow-sm', 'text-slate-900');
+            b.classList.add('text-slate-400');
+        });
+        const activeTab = document.getElementById(`tab_${sport || 'all'}`);
+        if (activeTab) {
+            activeTab.classList.add('bg-white', 'shadow-sm', 'text-slate-900');
+            activeTab.classList.remove('text-slate-400');
+        }
+
+        try {
+            const res = await fetch(`/api/student/favorites${sport && sport !== 'all' ? '?sport=' + sport : ''}`);
+            const data = await res.json();
+            allGroups = data.groups;
+            renderGrid();
+        } catch (e) {
+            grid.innerHTML = `<div class="col-span-full py-20 text-center text-slate-300 font-black text-sm">載入失敗</div>`;
+        }
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('favoritesGrid');
+        grid.innerHTML = '';
+
+        let hasCoaches = false;
+
+        allGroups.forEach(group => {
+            if (group.coaches.length > 0) hasCoaches = true;
+            group.coaches.forEach(coach => {
+                const card = document.createElement('div');
+                card.className = "group relative bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col";
+
+                // Handle Price Display Cleanly
+                let priceDisplay = coach.price_range;
+                if (!priceDisplay.includes('NT$')) priceDisplay = 'NT$ ' + priceDisplay;
+
+                card.innerHTML = `
+                    <a href="/coaches/${coach.id}" class="relative aspect-[5/4] bg-slate-50 overflow-hidden border-b border-slate-50 block">
+                        <img src="${coach.avatar_url}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                        <div class="absolute top-3 left-3 z-20 flex items-center gap-1 px-2 py-1 bg-white/95 rounded-full shadow-sm border border-slate-100/50">
+                            <i class="fas fa-shield-bolt text-blue-600 text-[8px]"></i>
+                            <span class="text-[7px] font-black text-slate-900 uppercase tracking-tighter">Verified</span>
+                        </div>
+                        <button onclick="toggleFavorite(event, ${coach.id})" 
+                            class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/60 backdrop-blur-sm flex items-center justify-center hover:bg-white text-rose-500 shadow-sm transition-all z-30">
+                            <i class="fas fa-heart text-sm"></i>
+                        </button>
+                    </a>
+                    
+                    <div class="p-4 flex-grow flex flex-col">
+                         <div class="flex items-center justify-between mb-1">
+                             <a href="/coaches/${coach.id}" class="text-sm font-black text-slate-900 truncate group-hover:text-blue-600 transition-colors flex-grow">
+                                 ${coach.name}
+                             </a>
+                             <div class="flex items-center gap-1 px-1.5 py-0.5 rounded-lg shrink-0">
+                                 <i class="fas fa-star text-amber-400 text-[9px]"></i>
+                                 <span class="text-[10px] font-black text-slate-700">${coach.avg_rating}</span>
+                             </div>
+                         </div>
+                         
+                         <div class="flex flex-wrap gap-1 mb-3">
+                             <span class="text-[10px] font-black text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200 uppercase tracking-tighter">${coach.sport_display}</span>
+                            ${coach.tags.slice(0, 3).map(t => `<span class="text-[10px] font-black text-blue-600 bg-blue-50/50 px-1.5 py-0.5 rounded-md border border-blue-100/30 uppercase tracking-tighter">#${t}</span>`).join('')}
+                        </div>
+                        
+                        <div class="pt-3 border-t border-slate-50 flex items-center justify-between mt-auto">
+                            <div>
+                                <span class="text-xs font-black text-slate-900">${priceDisplay}<span class="text-[8px] text-slate-300 font-bold ml-0.5">/ 堂</span></span>
+                            </div>
+                            <a href="/coaches/${coach.id}" class="h-8 px-3.5 bg-slate-900 text-white rounded-lg text-[9px] font-black shadow-md hover:scale-105 active:scale-95 transition-all flex items-center">
+                                預約諮詢
+                            </a>
+                        </div>
+                    </div>
+                    ${coach.status !== 'APPROVED' ? `
+                    <div class="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-30 flex items-center justify-center pointer-events-none">
+                        <div class="px-4 py-2 bg-slate-100 rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest">暫停預約</div>
+                    </div>` : ''}
+                `;
+                grid.appendChild(card);
+            });
+        });
+
+        if (!hasCoaches) {
+            grid.innerHTML = `
+                <div class="col-span-full py-20 text-center">
+                    <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+                        <i class="far fa-heart text-2xl"></i>
+                    </div>
+                    <p class="text-xs font-bold text-slate-300">目前沒有收藏任何教練</p>
+                    <a href="/coaches" class="mt-4 inline-block px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black">去探索</a>
+                </div>
+            `;
+        }
+    }
+
+    function filterFavorites(sport) {
+        loadFavorites(sport);
+    }
+
+    async function toggleFavorite(e, id) {
+        e.stopPropagation();
+        e.preventDefault();
+        try {
+            await fetch('/api/me/favorites/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coach_id: id })
+            });
+            // Reload grid to remove item
+            const activeTab = document.querySelector('.tab-btn.bg-white').id.replace('tab_', '');
+            loadFavorites(activeTab);
+        } catch (e) { alert('Error'); }
+    }
+
+    // Init
+    loadFavorites();
+</script>
+{% endblock %}

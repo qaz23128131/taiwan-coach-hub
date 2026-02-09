@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taiwan Coach Hub | 全地區專業教練媒合平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --premium-gradient: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Unified Clean Sports Background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/static/images/clean_sports_bg.png?v=3');
+            background-size: 600px;
+            /* Tiled pattern size for high-end look */
+            background-repeat: repeat;
+            background-position: center;
+            background-attachment: fixed;
+            z-index: -1;
+            opacity: 0.7;
+            /* Light pastel palette, higher opacity for visibility */
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Soft gradient overlay to ensure text contrast */
+            background: linear-gradient(to bottom, rgba(248, 250, 252, 0.2) 0%, rgba(248, 250, 252, 0.6) 100%);
+            z-index: -1;
+        }
+
+        .premium-bg {
+            background: var(--premium-gradient);
+        }
+
+        .btn-base {
+            height: 3rem;
+            padding: 0 1.5rem;
+            border-radius: 1rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .btn-premium {
+            background: var(--premium-gradient);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+
+        .coach-card {
+            background: white;
+            border: 1px solid #f1f5f9;
+            transition: all 0.4s ease;
+        }
+
+        .coach-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+            border-color: #dbeafe;
+        }
+
+        .nav-link {
+            font-weight: 600;
+            color: #64748b;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros/avatar.html" import render_avatar %}
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2">
+                <div class="w-10 h-10 premium-bg rounded-xl flex items-center justify-center text-white">
+                    <i class="fas fa-bolt text-lg"></i>
+                </div>
+                <span class="text-xl font-extrabold tracking-tight text-slate-900">Taiwan Coach Hub</span>
+            </a>
+
+            <div class="hidden md:flex items-center gap-10">
+                {% if user %}
+                {% if user.role == 'admin' %}
+                <!-- Admin Navigation -->
+                <a href="/admin"
+                    class="flex items-center gap-2 px-6 py-2 rounded-2xl transition-all font-black text-sm {% if request.url.path.startswith('/admin') %}bg-blue-600 text-white shadow-lg shadow-blue-500/30{% else %}text-slate-400 hover:text-slate-900 bg-slate-50{% endif %}">
+                    <i class="fas fa-desktop text-xs"></i>
+                    管理員首頁
+                </a>
+                {% else %}
+                <!-- Regular User Navigation -->
+                <a href="/coaches" class="nav-link">探索教練</a>
+
+                <!-- Notification Bell (Only for regular users for now, or unified) -->
+                <div class="relative group" onmouseenter="markAllAsRead()">
+                    <button class="p-2 text-slate-400 hover:text-blue-600 transition-colors relative">
+                        <i class="fas fa-bell text-lg"></i>
+                        <span id="notif-dot"
+                            class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white hidden"></span>
+                    </button>
+                    <div
+                        class="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                        <h5 class="text-xs font-black text-slate-400 uppercase mb-4">站內通知</h5>
+                        <div id="notif-list" class="space-y-3 max-h-60 overflow-y-auto">
+                            <p class="text-[11px] text-slate-300 text-center py-4">目前沒有新通知</p>
+                        </div>
+                    </div>
+                </div>
+                <a href="/account" class="nav-link text-blue-600 font-bold">個人帳戶</a>
+                {% endif %}
+
+                <!-- Common Profile / Logout for both roles -->
+                <div class="flex items-center gap-4 pl-4 border-l border-slate-100">
+                    <div class="flex flex-col items-end">
+                        <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">{{ 'ADMIN 管理員' if
+                            user.role == 'admin' else 'STUDENT 學員' }}</span>
+                        <span class="text-[11px] font-black text-slate-900 uppercase">{{ user.name or
+                            user.email.split('@')[0] }}</span>
+                    </div>
+                    <div class="hover:scale-105 transition-transform">
+                        {{ render_avatar(user.avatar_url, user.name, None, 'sm') }}
+                    </div>
+                    <a href="/logout"
+                        class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all ml-2"
+                        title="登出">
+                        <i class="fas fa-sign-out-alt text-xs"></i>
+                    </a>
+                </div>
+                {% else %}
+                <!-- Guest Navigation -->
+                <a href="/coaches" class="nav-link">探索教練</a>
+                <a href="/login" class="nav-link">登入</a>
+                <a href="/register" class="btn-base btn-premium !h-11">免費註冊</a>
+                {% endif %}
+                <script>
+                    async function fetchNotifs() {
+                        const [res, unreadRes] = await Promise.all([
+                            fetch('/api/notifications'),
+                            fetch('/api/notifications/unread_count')
+                        ]);
+                        const data = await res.json();
+                        const { count } = await unreadRes.json();
+
+                        const list = document.getElementById('notif-list');
+                        const dot = document.getElementById('notif-dot');
+
+                        if (count > 0) {
+                            dot.classList.remove('hidden');
+                        } else {
+                            dot.classList.add('hidden');
+                        }
+
+                        if (data.length > 0) {
+                            list.innerHTML = data.map(n => `
+                                <div onclick="markOneRead(${n.id}, '${n.link || '#'}')" 
+                                     class="block p-3 rounded-xl border-l-4 cursor-pointer ${n.is_read ? 'bg-white border-slate-100' : 'bg-blue-50/50 border-blue-500'} hover:bg-slate-50 transition-colors">
+                                    <p class="text-[11px] font-black text-slate-900 mb-1">${n.title}</p>
+                                    <p class="text-[10px] text-slate-500 leading-tight font-medium">${n.content}</p>
+                                </div>
+                            `).join('');
+                        } else {
+                            list.innerHTML = `<p class="text-[11px] text-slate-300 text-center py-4">目前沒有通知</p>`;
+                        }
+                    }
+
+                    async function markOneRead(id, link) {
+                        try {
+                            await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+                            window.location.href = link;
+                        } catch (e) {
+                            window.location.href = link;
+                        }
+                    }
+
+                    async function markAllAsRead() {
+                        const res = await fetch('/api/notifications/mark_read', { method: 'POST' });
+                        if (res.ok) {
+                            fetchNotifs();
+                        }
+                    }
+
+                    // Initial fetch
+                    fetchNotifs();
+
+                    // Refresh notifs every 30 seconds
+                    setInterval(fetchNotifs, 30000);
+                </script>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-6 py-6 md:py-10">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-white border-t border-slate-100 py-10 md:py-14 mt-12 md:mt-20">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
+            <div class="col-span-2">
+                <div class="flex items-center gap-2 mb-6">
+                    <div class="w-8 h-8 premium-bg rounded-lg flex items-center justify-center text-white">
+                        <i class="fas fa-bolt text-sm"></i>
+                    </div>
+                    <span class="text-lg font-bold">Taiwan Coach Hub</span>
+                </div>
+                <p class="text-slate-400 text-sm leading-relaxed max-w-sm">
+                    全地區領先的運動員媒合平台。我們致力於連結專業教練與熱愛運動的學員，讓每一次預約都能開啟全新的健康旅程。
+                </p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-6">快速連結</h4>
+                <ul class="space-y-4 text-sm text-slate-500">
+                    <li><a href="/coaches" class="hover:text-blue-600">找健身教練</a></li>
+                    <li><a href="/coaches" class="hover:text-blue-600">找滑雪指導</a></li>
+                    <li><a href="/coaches" class="hover:text-blue-600">找潛水學長</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-6">支援服務</h4>
+                <ul class="space-y-4 text-sm text-slate-500">
+                    <li><a href="#" class="hover:text-blue-600">常見問題</a></li>
+                    <li><a href="#" class="hover:text-blue-600">隱私條款</a></li>
+                    <li><a href="#" class="hover:text-blue-600">聯繫客服</a></li>
+                </ul>
+            </div>
+        </div>
+        <div
+            class="max-w-7xl mx-auto px-6 pt-12 mt-12 border-t border-slate-50 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+            © 2026 Taiwan Coach Hub. All rights reserved.
+        </div>
+    </footer>
+</body>
+
+</html>

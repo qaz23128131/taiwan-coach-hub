@@ -1,0 +1,391 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-6">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 mb-1">我的課程</h1>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Managing Lessons</p>
+        </div>
+
+        <!-- Tab Switcher (New Feature) -->
+        <div class="flex bg-slate-100 p-1 rounded-xl">
+            <button onclick="switchTab('pending')" id="tab-pending"
+                class="px-4 py-2 rounded-lg text-xs font-black text-slate-500 transition-all hover:text-slate-900">
+                待確認 ({{ lessons_pending|length }})
+            </button>
+            <button onclick="switchTab('ongoing')" id="tab-ongoing"
+                class="px-4 py-2 rounded-lg text-xs font-black text-slate-500 transition-all hover:text-slate-900">
+                進行中 ({{ lessons_ongoing|length }})
+            </button>
+            <button onclick="switchTab('completed')" id="tab-completed"
+                class="px-4 py-2 rounded-lg text-xs font-black text-slate-500 transition-all hover:text-slate-900">
+                已完成 ({{ lessons_completed|length }})
+            </button>
+        </div>
+    </div>
+
+    <!-- Link Back -->
+    <div class="mb-6">
+        <a href="/account/student"
+            class="text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors">
+            <i class="fas fa-arrow-left mr-1"></i> 返回個人中心
+        </a>
+    </div>
+
+    <!-- 1. Pending / Requested -->
+    <div id="view-pending" class="tab-content hidden animate-in fade-in slide-in-from-bottom-2">
+        {% if lessons_pending %}
+        <div class="grid gap-4">
+            {% for lesson in lessons_pending %}
+            <div
+                class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between group">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div
+                        class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500 text-xl font-black">
+                        {{ lesson.created_at.strftime('%d') }}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-black text-slate-900">{{ lesson.topic }}</h3>
+                            <span
+                                class="px-2 py-0.5 bg-amber-100 text-amber-600 rounded text-[9px] font-bold">等待教練確認</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                            教練: {{ lesson.coach.display_name }} • {{ lesson.created_at.strftime('%Y/%m/%d') }} 申請
+                        </p>
+                    </div>
+                </div>
+                <button disabled
+                    class="mt-4 md:mt-0 px-6 py-2 bg-slate-50 text-slate-300 rounded-xl text-[10px] font-black cursor-not-allowed">
+                    等待中
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-12 bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-100 text-center">
+            <p class="text-xs font-bold text-slate-300">目前沒有待確認的預約申請</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 2. Ongoing -->
+    <div id="view-ongoing" class="tab-content hidden animate-in fade-in slide-in-from-bottom-2">
+        {% if lessons_ongoing %}
+        <div class="grid gap-4">
+            {% for lesson in lessons_ongoing %}
+            <div
+                class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between group hover:border-emerald-100 transition-all">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div
+                        class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 text-xl font-black">
+                        {{ lesson.start_time.strftime('%d') }}
+                    </div>
+                    <div>
+                        <h3 class="text-base font-black text-slate-900 group-hover:text-emerald-600 transition-colors">
+                            {{ lesson.topic }}</h3>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                            教練: {{ lesson.coach.display_name }} • {{ lesson.start_time.strftime('%Y/%m @ %H:%M') }}
+                        </p>
+                    </div>
+                </div>
+                <!-- Controls -->
+                <div class="flex items-center gap-2 mt-4 md:mt-0 w-full md:w-auto justify-end">
+                    <button onclick="openComplaintModal({{ lesson.coach_id }}, 'lesson:{{ lesson.id }}')"
+                        class="px-4 py-2 border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50 transition-all">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> 投訴
+                    </button>
+
+                    {% if lesson.completed_by_student %}
+                    <span class="px-6 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black">
+                        等待教練確認
+                    </span>
+                    {% else %}
+                    <button onclick="confirmCompletion({{ lesson.id }})"
+                        class="px-6 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black shadow-lg shadow-emerald-100 hover:bg-emerald-600 transition-all">
+                        點擊完成課程
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-12 bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-100 text-center">
+            <p class="text-xs font-bold text-slate-300">目前沒有進行中的課程</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 3. Completed -->
+    <div id="view-completed" class="tab-content hidden animate-in fade-in slide-in-from-bottom-2">
+        {% if lessons_completed %}
+        <div class="grid gap-4">
+            {% for lesson in lessons_completed %}
+            <div
+                class="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between group opacity-80 hover:opacity-100 transition-all">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div
+                        class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 text-xl font-black">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-black text-slate-900">{{ lesson.topic }}</h3>
+                            {% if lesson.status == 'CANCELED' %}
+                            <span class="px-2 py-0.5 bg-rose-50 text-rose-500 rounded text-[9px] font-bold">教練已婉拒</span>
+                            {% else %}
+                            <span
+                                class="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-bold">已完成</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                            教練: {{ lesson.coach.display_name }} •
+                            {% if lesson.status == 'COMPLETED' and lesson.completed_at %}
+                            完成於 {{ lesson.completed_at.strftime('%Y/%m/%d %H:%M') }}
+                            {% else %}
+                            {{ lesson.created_at.strftime('%Y/%m/%d') }} 申請
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <!-- Reason or Review & Complaint -->
+                <div class="flex items-center gap-4 mt-4 md:mt-0 w-full md:w-auto justify-end">
+                    {% if lesson.status == 'CANCELED' %}
+                    {% if lesson.cancel_reason %}
+                    <div class="text-right">
+                        <span class="text-[9px] font-black text-slate-300 uppercase block mb-1">婉拒原因</span>
+                        <p class="text-[11px] font-bold text-rose-400 italic">{{ lesson.cancel_reason }}</p>
+                    </div>
+                    {% else %}
+                    <span class="text-[10px] font-bold text-slate-300">尚未提供原因</span>
+                    {% endif %}
+                    {% else %}
+                    <button onclick="openComplaintModal({{ lesson.coach_id }}, 'lesson:{{ lesson.id }}')"
+                        class="px-4 py-2 border border-slate-200 rounded-xl text-[10px] font-black text-slate-400 hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50 transition-all">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> 投訴
+                    </button>
+
+                    {% if lesson.id in reviewed_lesson_ids %}
+                    <span class="px-6 py-2 bg-slate-50 text-slate-400 rounded-xl text-[10px] font-black">
+                        <i class="fas fa-star text-amber-400 mr-1"></i> 已評價
+                    </span>
+                    {% else %}
+                    <button onclick="openReviewModal({{ lesson.id }}, '{{ lesson.topic }}')"
+                        class="px-6 py-2 bg-amber-400 text-white rounded-xl text-[10px] font-black shadow-lg shadow-amber-200 hover:scale-105 active:scale-95 transition-all">
+                        去評分
+                    </button>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-12 bg-slate-50/50 rounded-[2rem] border border-dashed border-slate-100 text-center">
+            <p class="text-xs font-bold text-slate-300">尚未有完成的課程紀錄</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Includes (Review & Complaint) - Keeping same logic -->
+<div id="reviewModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeReviewModal()"></div>
+    <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 transition-all scale-95 opacity-0"
+        id="reviewContent">
+        <h3 class="text-xl font-black text-slate-900 mb-1">課程評價</h3>
+        <p id="reviewLessonTitle" class="text-xs font-bold text-slate-400 mb-6 uppercase tracking-wider"></p>
+
+        <form id="reviewForm" class="space-y-4">
+            <input type="hidden" name="lesson_id" id="reviewLessonId">
+            <div class="space-y-2">
+                <div class="flex gap-2 text-3xl text-slate-200 justify-center py-4" id="starContainer">
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(1)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(2)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(3)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(4)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(5)"></i>
+                </div>
+                <input type="hidden" name="rating" id="reviewRating" value="5">
+            </div>
+
+            <textarea name="comment" rows="3"
+                class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-blue-100 outline-none"
+                placeholder="寫下您的心得..."></textarea>
+
+            <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
+                <input type="checkbox" name="is_anonymous" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                <span class="text-xs font-black text-slate-600">匿名評價</span>
+            </label>
+
+            <button type="submit"
+                class="w-full h-12 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-black transition-all">送出評價</button>
+        </form>
+    </div>
+</div>
+
+<div id="complaintModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeComplaintModal()"></div>
+    <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 transition-all scale-95 opacity-0"
+        id="complaintContent">
+        <h3 class="text-xl font-black text-rose-600 mb-6">提交投訴</h3>
+        <form id="complaintForm" class="space-y-4">
+            <input type="hidden" name="coach_id" id="compCoachId">
+            <input type="hidden" name="ref_id" id="compRefId">
+            <div class="p-3 bg-rose-50 rounded-xl text-xs font-bold text-rose-600 mb-2">
+                正在投訴課程 #<span id="compLessonDisplay"></span>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">投訴類型</label>
+                <select name="category"
+                    class="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-none outline-none">
+                    <option value="quality">課程品質不佳</option>
+                    <option value="no_show">教練未出席</option>
+                    <option value="harassment">騷擾或不當行為</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">詳細描述 (必填)</label>
+                <textarea name="description" rows="4"
+                    class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-rose-100 outline-none"
+                    placeholder="請詳細描述遇到的問題，例如發生時間、過程等..." required></textarea>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">上傳證據截圖 (支援
+                    JPG/PNG/PDF)</label>
+                <!-- Changed to file input -->
+                <input type="file" name="attachment_file" accept="image/*,.pdf"
+                    class="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold border-none file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100">
+                <p class="text-[9px] text-slate-400 font-bold px-1">支援圖片或 PDF 格式，作為佐證，避免爭議。</p>
+            </div>
+            <button type="submit"
+                class="w-full h-12 bg-rose-600 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-rose-700 transition-all">提交審核</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Tab Logic
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+        const buttons = document.querySelectorAll('[id^="tab-"]');
+        buttons.forEach(btn => {
+            btn.classList.remove('bg-white', 'text-slate-900', 'shadow-sm');
+            btn.classList.add('text-slate-500');
+        });
+
+        document.getElementById('view-' + tabName).classList.remove('hidden');
+
+        const btn = document.getElementById('tab-' + tabName);
+        btn.classList.remove('text-slate-500');
+        btn.classList.add('bg-white', 'text-slate-900', 'shadow-sm');
+
+        localStorage.setItem('student_lesson_tab', tabName);
+    }
+
+    // Init Tabs
+    window.addEventListener('load', () => {
+        const saved = localStorage.getItem('student_lesson_tab') || 'ongoing';
+        switchTab(saved);
+    });
+
+    // Validations & Modals
+    function openReviewModal(lid, title) {
+        document.getElementById('reviewLessonId').value = lid;
+        document.getElementById('reviewLessonTitle').innerText = title;
+        toggleModal('reviewModal', true);
+        setRating(5);
+    }
+    function closeReviewModal() { toggleModal('reviewModal', false); }
+    function setRating(n) {
+        document.getElementById('reviewRating').value = n;
+        const stars = document.getElementById('starContainer').children;
+        for (let i = 0; i < 5; i++) {
+            stars[i].classList.toggle('text-amber-400', i < n);
+            stars[i].classList.toggle('text-slate-200', i >= n);
+        }
+    }
+    function openComplaintModal(coachId, refStr) {
+        document.getElementById('compCoachId').value = coachId;
+        document.getElementById('compRefId').value = refStr;
+        document.getElementById('compLessonDisplay').innerText = refStr.split(':')[1];
+        toggleModal('complaintModal', true);
+    }
+    function closeComplaintModal() { toggleModal('complaintModal', false); }
+    function toggleModal(id, show) {
+        const m = document.getElementById(id);
+        const c = m.querySelector('div[id$="Content"]');
+        if (show) {
+            m.classList.remove('hidden');
+            setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10);
+        } else {
+            c.classList.add('scale-95', 'opacity-0');
+            c.classList.remove('scale-100', 'opacity-100');
+            setTimeout(() => m.classList.add('hidden'), 300);
+        }
+    }
+
+    async function confirmCompletion(id) {
+        if (!confirm('確認課程已完成上課並準備結案嗎？\n點擊後將通知教練進行最後確認。')) return;
+        try {
+            const res = await fetch(`/api/bookings/${id}/complete`, { method: 'POST' });
+            if (res.ok) {
+                alert('已發送完成通知給教練！請等待教練完成最後確認。');
+                location.reload();
+            } else {
+                const j = await res.json();
+                alert('失敗: ' + (j.detail || '未知錯誤'));
+            }
+        } catch (e) { alert('系統錯誤'); }
+    }
+
+    document.getElementById('reviewForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            lesson_id: document.getElementById('reviewLessonId').value,
+            rating: document.getElementById('reviewRating').value,
+            comment: e.target.comment.value,
+            is_anonymous: e.target.is_anonymous.checked
+        };
+        try {
+            const res = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (res.ok) { alert('評價成功'); location.reload(); }
+            else { const j = await res.json(); alert('失敗: ' + j.detail); }
+        } catch (e) { alert('系統錯誤'); }
+    };
+
+    document.getElementById('complaintForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+
+        // Handle ref_id logic
+        const refId = e.target.ref_id.value;
+        const refParts = refId.split(':'); // lesson:1 or thread:5
+
+        if (refParts[0] === 'lesson') formData.append('lesson_id', refParts[1]);
+        if (refParts[0] === 'thread') formData.append('thread_id', refParts[1]);
+
+        // Ensure is_anonymous is false (or handle if checkbox exists)
+        formData.append('is_anonymous', 'false');
+
+        try {
+            const res = await fetch('/api/complaints', {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) { alert('投訴已提交，管理員將進行審核'); location.reload(); }
+            else { const j = await res.json(); alert('失敗: ' + (j.detail || '提交失敗')); }
+        } catch (e) { alert('系統錯誤'); }
+    };
+</script>
+{% endblock %}

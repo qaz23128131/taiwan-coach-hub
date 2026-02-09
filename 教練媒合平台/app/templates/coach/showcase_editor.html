@@ -1,0 +1,929 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+<div class="min-h-screen bg-slate-50/50 pb-20">
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-100 pt-10 pb-10 sticky top-0 z-40 shadow-sm/50">
+        <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black text-slate-900 mb-1">展示頁編輯器</h1>
+                <p class="text-slate-500 font-bold text-xs">自訂公開頁面的內容排序與可見性。</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- Dirty State Controls (Initially Hidden) -->
+                <div id="unsaved-controls" class="hidden flex items-center gap-2">
+                    <span
+                        class="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 flex items-center">
+                        <i class="fas fa-exclamation-circle mr-1.5"></i> 未儲存變更
+                    </span>
+                    <button onclick="resetConfig()"
+                        class="px-4 py-2 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
+                        重置
+                    </button>
+                    <button id="btn-save-all" onclick="saveConfigArgs()"
+                        class="px-5 py-2 rounded-lg text-xs font-black text-white bg-slate-900 hover:bg-black shadow-lg shadow-slate-200/50 transition-all flex items-center gap-2">
+                        <i class="fas fa-save"></i> 儲存編輯
+                    </button>
+                    <div class="w-px h-6 bg-slate-200 mx-1"></div>
+                </div>
+
+                <a href="/account/coach/edit"
+                    class="text-slate-400 hover:text-slate-600 text-xs font-bold flex items-center px-2">
+                    <i class="fas fa-arrow-left mr-1.5"></i> 返回個人檔案
+                </a>
+
+                <a href="/coaches/{{ coach.id }}" target="_blank"
+                    class="btn-base bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs"
+                    style="padding: 0.5rem 1rem; border-radius: 0.5rem; display: inline-flex; align-items: center;">
+                    <i class="fas fa-external-link-alt mr-2"></i> 預覽頁面
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Left: Draggable Sidebar -->
+        <div class="lg:col-span-3 space-y-4">
+            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">頁面模組排序</h3>
+            <div id="sortable-list" class="space-y-2">
+                <!-- Injected via JS -->
+            </div>
+            <p class="text-[10px] text-slate-400 text-center pt-2">拖曳可調整公開頁顯示順序</p>
+        </div>
+
+        <!-- Right: Editor Area -->
+        <div class="lg:col-span-9">
+            <div class="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 p-8 min-h-[600px]">
+
+                <!-- Dynamic View Container -->
+                <div id="editor-container">
+                    <div class="flex flex-col items-center justify-center h-full text-slate-300 space-y-4 py-20">
+                        <i class="fas fa-arrow-left text-4xl animate-pulse"></i>
+                        <p class="font-bold">請從左側選擇要編輯的模組</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TEMPLATES FOR VIEWS (Hidden) -->
+<template id="tpl-view-media">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h2 class="text-2xl font-black text-slate-900">作品集管理</h2>
+            <p class="text-xs text-slate-500 font-bold mt-1">展示您的教學側拍或形象照。</p>
+        </div>
+        <button onclick="openAddModal('media')" id="btn-add-media"
+            class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs hover:bg-black transition-colors font-bold">
+            <i class="fas fa-plus mr-2"></i> 新增作品
+        </button>
+    </div>
+    <div id="media-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+</template>
+
+<template id="tpl-view-links">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h2 class="text-2xl font-black text-slate-900">社群連結管理</h2>
+            <p class="text-xs text-slate-500 font-bold mt-1">連結您的 Instagram、LINE 或個人網站。</p>
+        </div>
+        <button onclick="openAddModal('links')" id="btn-add-links"
+            class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs hover:bg-black transition-colors font-bold">
+            <i class="fas fa-plus mr-2"></i> 新增連結
+        </button>
+    </div>
+    <div id="links-list" class="space-y-3"></div>
+</template>
+
+<template id="tpl-view-faq">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h2 class="text-2xl font-black text-slate-900">常見問題 (FAQ)</h2>
+            <p class="text-xs text-slate-500 font-bold mt-1">預先回答學員可能的疑問。</p>
+        </div>
+        <button onclick="openAddModal('faq')" id="btn-add-faq"
+            class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs hover:bg-black transition-colors font-bold">
+            <i class="fas fa-plus mr-2"></i> 新增問答
+        </button>
+    </div>
+    <div id="faq-list" class="space-y-4"></div>
+</template>
+
+<template id="tpl-view-offers">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h2 class="text-2xl font-black text-slate-900">課程方案管理</h2>
+            <p class="text-xs text-slate-500 font-bold mt-1">清晰展示您的服務項目與價格。</p>
+        </div>
+        <button onclick="openAddModal('offers')" id="btn-add-offers"
+            class="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs hover:bg-black transition-colors font-bold">
+            <i class="fas fa-plus mr-2"></i> 新增方案
+        </button>
+    </div>
+    <div id="offers-list" class="grid grid-cols-1 gap-4"></div>
+</template>
+
+<template id="tpl-locked">
+    <div class="flex flex-col items-center justify-center py-20 text-center">
+        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6 text-slate-300">
+            <i class="fas fa-lock text-3xl"></i>
+        </div>
+        <h3 class="text-xl font-black text-slate-900 mb-2">{Pro} 方案限定功能</h3>
+        <p class="text-slate-500 font-bold text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+            想回答學員常見問題或連結社群媒體？<br>升級至 <strong>Pro 專業方案</strong> 即可解鎖此模組，大幅提升學員信任感。
+        </p>
+        <a href="/account/coach/plan"
+            class="px-8 py-3 bg-slate-900 text-white rounded-xl font-black hover:bg-black shadow-xl shadow-slate-200 transition-all inline-flex items-center gap-2">
+            <i class="fas fa-crown text-amber-400"></i> 立即解鎖
+        </a>
+    </div>
+</template>
+
+<!-- Upgrade Prompt Modal (Reusable) -->
+<div id="modal-upgrade"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 hidden">
+    <div
+        class="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl p-8 text-center animate-in zoom-in-95 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-amber-100 rounded-full -mr-16 -mt-16 blur-2xl opacity-50"></div>
+
+        <div
+            class="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-amber-500 relative z-10">
+            <i class="fas fa-layer-group text-3xl"></i>
+        </div>
+
+        <h3 class="text-2xl font-black text-slate-900 mb-2 relative z-10">已達方案上限</h3>
+        <p id="upgrade-msg" class="text-slate-500 font-bold text-sm mb-8 leading-relaxed relative z-10">
+            您的方案目前最多只能新增內容。升級以解鎖更多空間，完整展示您的專業優勢。
+        </p>
+
+        <div class="space-y-3 relative z-10">
+            <a href="/account/coach/plan"
+                class="block w-full py-3.5 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all shadow-lg">
+                查看升級方案
+            </a>
+            <button onclick="document.getElementById('modal-upgrade').classList.add('hidden')"
+                class="block w-full py-3 bg-white text-slate-400 rounded-xl font-bold text-xs hover:text-slate-600 transition-all">
+                稍後再說
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<!-- 1. Media Modal -->
+<div id="modal-media"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div class="flex justify-between items-center p-6 border-b border-slate-100 font-black text-slate-800 text-lg">
+            <h3>新增作品</h3>
+            <button onclick="closeModal('modal-media')" class="text-slate-400 hover:text-red-500"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <form onsubmit="submitForm(event, 'media')" class="space-y-4 p-6">
+
+            <!-- Type Selection -->
+            <div>
+                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">類型</label>
+                <select name="type" id="media-type-select"
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    <option value="image">圖片 (Image)</option>
+                    <option value="video">影片 (Video)</option>
+                    <option value="youtube">YouTube 連結</option>
+                </select>
+            </div>
+
+            <!-- Source Toggle -->
+            <div>
+                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">來源</label>
+                <div class="flex bg-slate-100 p-1 rounded-xl mb-2">
+                    <button type="button" onclick="toggleMediaSource('upload')" id="btn-src-upload"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-white shadow text-slate-900 transition-all">上傳檔案</button>
+                    <button type="button" onclick="toggleMediaSource('url')" id="btn-src-url"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-500 hover:bg-white/50 transition-all">輸入網址</button>
+                </div>
+
+                <!-- 1. File Input -->
+                <div id="group-src-upload">
+                    <div
+                        class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition-colors relative">
+                        <input type="file" id="file-upload-input" onchange="handleFileUpload(this)"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,video/*">
+                        <div id="upload-placeholder">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-slate-300 mb-2"></i>
+                            <p class="text-xs text-slate-400 font-bold">點擊或拖曳檔案至此</p>
+                        </div>
+                        <div id="upload-loading" class="hidden">
+                            <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
+                            <p class="text-xs text-blue-500 font-bold mt-1">上傳中...</p>
+                        </div>
+                        <div id="upload-success" class="hidden">
+                            <img id="preview-img" class="h-20 mx-auto rounded object-cover mb-2 hidden">
+                            <p class="text-xs text-green-600 font-bold"><i class="fas fa-check-circle mr-1"></i>上傳完成</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. URL Input -->
+                <div id="group-src-url" class="hidden">
+                    <input type="text" id="manual-url-input" onchange="updateUrlValue(this.value)"
+                        class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="https://...">
+                </div>
+
+                <!-- Hidden Actual URL Field -->
+                <input type="hidden" name="url" id="real-url-input" required>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">標題/說明</label>
+                <input type="text" name="title"
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="選填">
+            </div>
+            <button type="submit"
+                class="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all shadow-lg">確認新增</button>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Link Modal -->
+<div id="modal-links"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div class="flex justify-between items-center p-6 border-b border-slate-100 font-black text-slate-800 text-lg">
+            <h3>新增連結</h3>
+            <button onclick="closeModal('modal-links')" class="text-slate-400 hover:text-red-500"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <form onsubmit="submitForm(event, 'links')" class="space-y-4 p-6">
+            <div>
+                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">平台類型</label>
+                <select name="icon"
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+                    <option value="instagram">Instagram</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="line">LINE</option>
+                    <option value="globe">個人網站 / Blog</option>
+                </select>
+            </div>
+            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">連結文字</label><input
+                    type="text" name="text" required
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="例如：追蹤我的 IG"></div>
+            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">URL</label><input
+                    type="text" name="url" required
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="https://..."></div>
+            <button type="submit"
+                class="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all shadow-lg">確認新增</button>
+        </form>
+    </div>
+</div>
+
+<!-- 3. FAQ Modal -->
+<div id="modal-faq"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div class="flex justify-between items-center p-6 border-b border-slate-100 font-black text-slate-800 text-lg">
+            <h3>新增問答</h3>
+            <button onclick="closeModal('modal-faq')" class="text-slate-400 hover:text-red-500"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <form onsubmit="submitForm(event, 'faq')" class="space-y-4 p-6">
+            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">問題 (Q)</label><input
+                    type="text" name="question" required
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+            </div>
+            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">回答 (A)</label><textarea
+                    name="answer" required
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all h-24"></textarea>
+            </div>
+            <button type="submit"
+                class="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all shadow-lg">確認新增</button>
+        </form>
+    </div>
+</div>
+
+<!-- 5. Offer Modal -->
+<div id="modal-offers"
+    class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div class="flex justify-between items-center p-6 border-b border-slate-100 font-black text-slate-800 text-lg">
+            <h3>新增課程方案</h3>
+            <button onclick="closeModal('modal-offers')" class="text-slate-400 hover:text-red-500"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <form onsubmit="submitForm(event, 'offers')" class="space-y-4 p-6">
+            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">方案名稱</label><input
+                    type="text" name="title" required
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Ex: 10堂極速燃脂"></div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">價格說明</label><input
+                        type="text" name="price_text" required
+                        class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Ex: NT$ 15,000"></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">時長/頻率</label><input
+                        type="text" name="duration" required
+                        class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        placeholder="Ex: 60 min / 堂"></div>
+            </div>
+
+            <!-- Tags Selection -->
+            <div>
+                <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">標籤 (Tags)</label>
+                <div class="flex flex-wrap gap-2">
+                    <label class="cursor-pointer"><input type="checkbox" name="tags_options" value="新手推薦"
+                            class="peer sr-only"><span
+                            class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold peer-checked:bg-amber-100 peer-checked:text-amber-600 transition-colors">新手推薦</span></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="tags_options" value="熱銷"
+                            class="peer sr-only"><span
+                            class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold peer-checked:bg-amber-100 peer-checked:text-amber-600 transition-colors">熱銷</span></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="tags_options" value="高CP值"
+                            class="peer sr-only"><span
+                            class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold peer-checked:bg-amber-100 peer-checked:text-amber-600 transition-colors">高CP值</span></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="tags_options" value="限時優惠"
+                            class="peer sr-only"><span
+                            class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold peer-checked:bg-amber-100 peer-checked:text-amber-600 transition-colors">限時優惠</span></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="tags_options" value="進階"
+                            class="peer sr-only"><span
+                            class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold peer-checked:bg-amber-100 peer-checked:text-amber-600 transition-colors">進階</span></label>
+                    <label class="cursor-pointer"><input type="checkbox" name="tags_options" value="一對一"
+                            class="peer sr-only"><span
+                            class="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-bold peer-checked:bg-amber-100 peer-checked:text-amber-600 transition-colors">一對一</span></label>
+                </div>
+            </div>
+
+            <div><label class="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">詳細說明</label><textarea
+                    name="description" required
+                    class="w-full rounded-xl border-slate-200 bg-slate-50 text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all h-24"></textarea>
+            </div>
+            <button type="submit"
+                class="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs hover:bg-black transition-all shadow-lg">確認新增</button>
+        </form>
+    </div>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox" class="fixed inset-0 bg-black/90 z-[10000] hidden items-center justify-center p-4"
+    onclick="closeLightbox()">
+    <img id="lightbox-img" class="max-w-full max-h-full rounded shadow-2xl animate-in zoom-in-95">
+    <button class="absolute top-4 right-4 text-white text-3xl hover:text-slate-300"><i
+            class="fas fa-times"></i></button>
+</div>
+
+<script>
+    let PLAN = null;
+    let DATA = null;
+    let CURRENT_TAB = 'media';
+
+    // Define Sections Metadata
+    // Limit Definitions (Frontend Enforcement)
+    const PLAN_DEFINITIONS = {
+        'starter': { media: 3, offers: 1, faq: 0, links: 0, name: 'Starter 起步版' },
+        'pro': { media: 9, offers: 3, faq: 3, links: 3, name: 'Pro 專業版' },
+        'elite': { media: 15, offers: 6, faq: 6, links: 5, name: 'Elite 菁英版' }
+    };
+
+    const SECTIONS_META = {
+        'media': { icon: 'fa-images', name: '作品集', limitKey: 'media' },
+        'offers': { icon: 'fa-tags', name: '課程方案', limitKey: 'offers' },
+        'faq': { icon: 'fa-question-circle', name: 'FAQ 問答', limitKey: 'faq' },
+        'links': { icon: 'fa-link', name: '社群連結', limitKey: 'links' }
+    };
+
+    async function init() {
+        try {
+            const [pRes, dRes] = await Promise.all([
+                fetch('/api/coach/me/plan'),
+                fetch('/api/coach/me/showcase')
+            ]);
+
+            if (!pRes.ok || !dRes.ok) throw new Error("API Load Failed");
+
+            PLAN = await pRes.json();
+            DATA = await dRes.json();
+
+            // --- FORCE LIMITS OVERRIDE ---
+            let level = PLAN.level || 'starter';
+            if (level === 'basic' || level === 'free') level = 'starter';
+            if (level === 'standard' || level === 'premium') level = 'pro';
+            // Apply limits (Force Frontend Rules)
+            const def = PLAN_DEFINITIONS[level] || PLAN_DEFINITIONS['starter'];
+            PLAN.limits = def;
+            PLAN.plan_name = def.name;
+            PLAN.level = level;
+
+            // Initialize Pending
+            DATA.pending_deletes = { media: [], links: [], faq: [], offers: [] };
+            ['media', 'links', 'faq', 'offers'].forEach(k => { if (!DATA[k]) DATA[k] = []; });
+
+            if (!DATA.config) DATA.config = { order: Object.keys(SECTIONS_META), visible: {} };
+            if (!DATA.config.order) DATA.config.order = Object.keys(SECTIONS_META);
+
+            // Clean up deleted keys
+            DATA.config.order = DATA.config.order.filter(k => SECTIONS_META[k]);
+
+            // Add missing keys
+            Object.keys(SECTIONS_META).forEach(k => {
+                if (!DATA.config.order.includes(k)) DATA.config.order.push(k);
+            });
+
+            renderHeader();
+            renderSidebar();
+
+            if (CURRENT_TAB) showEditor(CURRENT_TAB);
+
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderHeader() {
+        if (!PLAN) return;
+        const nameEl = document.getElementById('plan-name');
+        if (nameEl) nameEl.innerText = PLAN.plan_name;
+
+        const b = document.getElementById('plan-badge');
+        if (!b) return;
+        b.className = 'inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase';
+        if (PLAN.level === 'elite') { b.classList.add('bg-slate-900', 'text-amber-500'); b.classList.remove('bg-slate-100', 'text-slate-600'); }
+        else if (PLAN.level === 'pro') { b.classList.add('bg-blue-600', 'text-white'); b.classList.remove('bg-slate-100', 'text-slate-600'); }
+    }
+
+    // --- RENDER SIDEBAR ---
+    function renderSidebar() {
+        const list = document.getElementById('sortable-list');
+        if (!list) return; // fail safe
+
+        list.innerHTML = '';
+
+        DATA.config.order.forEach(key => {
+            const meta = SECTIONS_META[key];
+            if (!meta) return; // Skip if section removed (e.g. testimonials)
+
+            const isVisible = DATA.config.visible[key] !== false; // default true
+            const isActive = CURRENT_TAB === key;
+            const count = getCount(key);
+
+            // Using inline simplified card style since @apply is not available
+            const el = document.createElement('div');
+            el.className = `sidebar-item mb-2 flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl cursor-grab active:cursor-grabbing hover:shadow-md transition-all select-none ${isActive ? 'border-slate-900 ring-1 ring-slate-900' : ''}`;
+            el.dataset.key = key;
+
+            el.innerHTML = `
+                <div class="cursor-grab text-slate-300 hover:text-slate-500 px-1"><i class="fas fa-grip-vertical"></i></div>
+                <div class="w-8 h-8 rounded-lg ${isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'} flex items-center justify-center cursor-pointer" onclick="showEditor('${key}')">
+                    <i class="fas ${meta.icon} text-xs"></i>
+                </div>
+                <div class="flex-grow text-xs font-bold text-slate-700 cursor-pointer pl-2" onclick="showEditor('${key}')">
+                    ${meta.name}
+                    <span class="text-[9px] text-slate-300 ml-1 font-normal">(${count})</span>
+                </div>
+                
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" ${isVisible ? 'checked' : ''} onchange="toggleSection('${key}', this.checked)">
+                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-slate-900"></div>
+                </label>
+            `;
+            list.appendChild(el);
+        });
+
+        // Init Sortable
+        if (typeof Sortable !== 'undefined') {
+            new Sortable(list, {
+                animation: 150,
+                handle: '.cursor-grab',
+                onEnd: saveOrder
+            });
+        }
+    }
+
+    function showEditor(key) {
+        CURRENT_TAB = key;
+
+        // Update Sidebar Active State
+        renderSidebar();
+
+        const meta = SECTIONS_META[key];
+        // Revert: Plan object actually has limits under the 'limits' key (checked via main.py)
+        const limit = (PLAN.limits && PLAN.limits[meta.limitKey] !== undefined) ? PLAN.limits[meta.limitKey] : 0;
+        const isLocked = limit === 0;
+
+        const count = getCount(key);
+
+        const container = document.getElementById('editor-container');
+        container.innerHTML = '';
+
+        if (isLocked) {
+            const tpl = document.getElementById('tpl-locked');
+            const clone = tpl.content.cloneNode(true);
+            clone.getElementById('locked-msg').innerText = `您目前的方案無法使用【${meta.name}】，請升級以解鎖。`;
+            container.appendChild(clone);
+            return;
+        }
+
+        // Load Template
+        const tpl = document.getElementById(`tpl-view-${key}`);
+        if (tpl) {
+            container.appendChild(tpl.content.cloneNode(true));
+            renderEditorContent(key);
+
+            // Update Add Button State (Visual Only, Logic in openAddModal)
+            const btn = document.getElementById(`btn-add-${key}`);
+            if (count >= limit) {
+                // We don't disable it completely anymore, we let them click to see upgrade prompt
+                // But we can style it to look "Full"
+                btn.classList.remove('bg-slate-900', 'text-white', 'hover:bg-black');
+                btn.classList.add('bg-slate-100', 'text-slate-400', 'hover:bg-slate-200');
+                btn.innerHTML = `<i class="fas fa-lock mr-2"></i> ${count}/${limit} (已達上限)`;
+            } else {
+                btn.innerHTML = `<i class="fas fa-plus mr-2"></i> 新增${meta.name} (${count}/${limit})`;
+            }
+        }
+    }
+
+    function getCount(key) {
+        if (!DATA) return 0;
+        if (key === 'media') return DATA.media ? DATA.media.length : 0;
+        if (key === 'links') return DATA.links ? DATA.links.length : 0;
+        if (key === 'offers') return DATA.offers ? DATA.offers.length : 0;
+        if (key === 'faq') return DATA.faq ? DATA.faq.length : 0;
+        return 0;
+    }
+
+    function renderEditorContent(key) {
+        if (key === 'media') {
+            const list = document.getElementById('media-grid');
+            if (!list || !DATA.media) return;
+            list.innerHTML = DATA.media.map(m => {
+                let content = '';
+                if (m.type === 'video') {
+                    content = `<video src="${m.url}" controls class="w-full h-full object-cover"></video>`;
+                } else if (m.type === 'youtube') {
+                    // Try extraction
+                    let vid = '';
+                    try {
+                        if (m.url.includes('v=')) vid = m.url.split('v=')[1].split('&')[0];
+                        else if (m.url.includes('youtu.be/')) vid = m.url.split('youtu.be/')[1];
+                    } catch (e) { }
+                    if (vid) content = `<iframe src="https://www.youtube.com/embed/${vid}" class="w-full h-full object-cover" frameborder="0" allowfullscreen></iframe>`;
+                    else content = `<div class="w-full h-full bg-black flex items-center justify-center text-white"><i class="fab fa-youtube text-2xl"></i></div>`;
+                } else {
+                    content = `<img src="${m.url}" onclick="openLightbox('${m.url}')" class="w-full h-full object-cover cursor-zoom-in" onerror="this.src='https://via.placeholder.com/300?text=Error'">`;
+                }
+
+                return `
+                <div class="relative group aspect-square bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                    ${content}
+                    <button onclick="deleteItem('media', ${m.id})" class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20"><i class="fas fa-trash"></i></button>
+                    ${m.type !== 'image' ? '<span class="absolute bottom-2 left-2 bg-black/50 text-white px-2 py-0.5 rounded text-[10px] z-20 pointer-events-none">Video</span>' : ''}
+                </div>
+            `}).join('');
+        } else if (key === 'links') {
+            const list = document.getElementById('links-list');
+            if (!list || !DATA.links) return;
+            list.innerHTML = DATA.links.map(l => `
+                <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 group">
+                    <i class="fab fa-${l.icon} text-slate-400 text-xl w-6 text-center"></i>
+                    <div class="flex-grow">
+                        <p class="text-xs font-black text-slate-800">${l.text}</p>
+                        <p class="text-[10px] text-slate-400 truncate">${l.url}</p>
+                    </div>
+                    <button onclick="deleteItem('links', ${l.id})" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        } else if (key === 'faq') {
+            const list = document.getElementById('faq-list');
+            if (!list || !DATA.faq) return;
+            list.innerHTML = DATA.faq.map(f => `
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100 group relative">
+                    <h4 class="font-black text-slate-800 text-xs mb-1">Q: ${f.question}</h4>
+                    <p class="text-xs text-slate-500">A: ${f.answer}</p>
+                    <button onclick="deleteItem('faq', ${f.id})" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button>
+                </div>
+            `).join('');
+        } else if (key === 'offers') {
+            const list = document.getElementById('offers-list');
+            if (!list || !DATA.offers) return;
+            list.innerHTML = DATA.offers.map(o => {
+                // Parse tags if string, else use as is
+                let tags = [];
+                try {
+                    if (typeof o.tags === 'string') tags = JSON.parse(o.tags);
+                    else if (Array.isArray(o.tags)) tags = o.tags;
+                } catch (e) { }
+
+                const tagsHtml = tags.map(t => `<span class="px-2 py-0.5 bg-amber-100 text-amber-600 rounded text-[10px] font-bold mr-1">${t}</span>`).join('');
+
+                return `
+                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-xl border border-slate-100 group">
+                    <div>
+                        <div class="flex items-center mb-1">
+                            ${tagsHtml}
+                        </div>
+                        <h4 class="font-black text-slate-800 text-sm">${o.title}</h4>
+                        <p class="text-xs text-slate-500 font-bold mt-1">${o.price_text} <span class="text-slate-300">|</span> ${o.duration}</p>
+                    </div>
+                     <button onclick="deleteItem('offers', ${o.id})" class="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-trash"></i></button>
+                </div>
+            `}).join('');
+        }
+    }
+
+
+    // --- Config Updates ---
+
+    // Instead of auto-saving, we update local state and show dirty UI.
+    function toggleSection(key, isVisible) {
+        DATA.config.visible[key] = isVisible;
+        setDirty(true);
+    }
+
+    function saveOrder() {
+        const order = [];
+        document.querySelectorAll('.sidebar-item').forEach(el => order.push(el.dataset.key));
+        DATA.config.order = order;
+        setDirty(true);
+    }
+
+    // New Manual Save Logic
+    function setDirty(isDirty) {
+        // console.log("Set Dirty:", isDirty);
+        const ctrls = document.getElementById('unsaved-controls');
+        if (isDirty) {
+            ctrls.classList.remove('hidden');
+            window.onbeforeunload = () => true;
+        } else {
+            ctrls.classList.add('hidden');
+            window.onbeforeunload = null;
+        }
+    }
+
+    function getTempId() {
+        return -1 * Math.floor(Math.random() * 10000000);
+    }
+
+    // --- Actions (Fake Draft) ---
+    window.submitForm = function (e, type) {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd.entries());
+
+        // Construct Object
+        const item = { id: getTempId() };
+
+        if (type === 'media') {
+            item.type = body.type || 'image';
+            item.url = body.url;
+            item.title = body.title || '';
+        } else if (type === 'links') {
+            item.icon = body.icon;
+            item.text = body.text;
+            item.url = body.url;
+        } else if (type === 'faq') {
+            item.question = body.question;
+            item.answer = body.answer;
+        } else if (type === 'offers') {
+            const tags = [];
+            e.target.querySelectorAll('input[name="tags_options"]:checked').forEach(cb => tags.push(cb.value));
+            item.tags = tags;
+            item.title = body.title;
+            item.price_text = body.price_text;
+            item.duration = body.duration;
+            item.description = body.description;
+        }
+
+        // Push Local
+        DATA[type].push(item);
+
+        // UI Updates
+        closeModal(`modal-${type}`);
+        e.target.reset();
+        e.target.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+        // Refresh View
+        renderSidebar(); // Update counts
+        renderEditorContent(type);
+        setDirty(true);
+    }
+
+    window.deleteItem = function (type, id) {
+        if (!confirm('確定刪除？(點擊儲存後生效)')) return;
+
+        // 1. Remove from local list
+        const idx = DATA[type].findIndex(x => x.id === id);
+        if (idx === -1) return;
+
+        const item = DATA[type][idx];
+        DATA[type].splice(idx, 1);
+
+        // 2. If real ID (positive), add to pending_deletes
+        if (item.id > 0) {
+            DATA.pending_deletes[type].push(item.id);
+        }
+
+        // Refresh
+        renderSidebar();
+        renderEditorContent(type);
+        setDirty(true);
+    }
+
+    function resetConfig() {
+        if (!confirm('確定要捨棄所有未儲存的變更嗎？')) return;
+        init(); // Full Reload reverts everything
+        setDirty(false);
+    }
+
+    async function saveConfigArgs() {
+        console.log("Saving changes...");
+        const btn = document.getElementById("btn-save-all");
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> 儲存中...';
+        btn.disabled = true;
+
+        try {
+            // 1. Process Deletes
+            const deletePromises = [];
+            ['media', 'links', 'faq', 'offers'].forEach(type => {
+                DATA.pending_deletes[type].forEach(id => {
+                    deletePromises.push(fetch(`/api/coach/me/${type}/${id}`, { method: 'DELETE' }));
+                });
+            });
+            await Promise.all(deletePromises);
+
+            // 2. Process Inserts
+            const insertPromises = [];
+            ['media', 'links', 'faq', 'offers'].forEach(type => {
+                DATA[type].filter(x => x.id < 0).forEach(item => {
+                    // Clean item for API (remove id)
+                    const payload = { ...item };
+                    delete payload.id;
+                    if (type === 'offers') payload.tags = item.tags;  // Ensure array
+
+                    insertPromises.push(
+                        fetch(`/api/coach/me/${type}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        })
+                    );
+                });
+            });
+            await Promise.all(insertPromises);
+
+            // 3. Save Layout Config
+            await fetch('/api/coach/me/showcase-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(DATA.config)
+            });
+
+            // 4. Final Reload
+            await init();
+            setDirty(false);
+            alert('所有變更已儲存！');
+
+        } catch (e) {
+            console.error(e);
+            alert('儲存過程發生錯誤，請檢查網路或重試。');
+            // Try to reload partial success
+            init();
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // --- ACTIONS ---
+    window.openAddModal = function (type) {
+        // Limit Check
+        const count = getCount(type);
+        const meta = SECTIONS_META[type];
+        const limit = PLAN.limits[meta.limitKey];
+
+        if (count >= limit) {
+            const proLimit = PLAN_DEFINITIONS['pro'][meta.limitKey];
+            const eliteLimit = PLAN_DEFINITIONS['elite'][meta.limitKey];
+            let nextTier = 'Pro 專業版';
+            let nextLimit = proLimit;
+
+            if (PLAN.limits == PLAN_DEFINITIONS['pro']) {
+                nextTier = 'Elite 菁英版';
+                nextLimit = eliteLimit;
+            }
+
+            // Update modal text
+            const msg = document.getElementById('upgrade-msg');
+            msg.innerHTML = `您目前的方案最多只能新增 <strong>${limit}</strong> 個${meta.name}。<br>升級至 <strong>${nextTier}</strong> 可解鎖至 ${nextLimit} 個，完整展示您的專業優勢。`;
+
+            // Show Upgrade Modal
+            document.getElementById('modal-upgrade').classList.remove('hidden');
+            return;
+        }
+
+        const modal = document.getElementById(`modal-${type}`);
+        if (modal) {
+            modal.classList.remove('hidden');
+            if (type === 'media') {
+                resetUploadUI();
+                toggleMediaSource('upload');
+                document.getElementById('media-type-select').value = 'image';
+                document.getElementById('manual-url-input').value = '';
+                document.getElementById('real-url-input').value = '';
+            }
+        }
+    }
+
+    window.closeModal = function (id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    // Lightbox & Upload remains same...
+    window.openLightbox = function (url) {
+        document.getElementById('lightbox-img').src = url;
+        document.getElementById('lightbox').classList.remove('hidden');
+        document.getElementById('lightbox').classList.add('flex');
+    }
+
+    window.closeLightbox = function () {
+        document.getElementById('lightbox').classList.add('hidden');
+        document.getElementById('lightbox').classList.remove('flex');
+    }
+
+    window.toggleMediaSource = function (mode) {
+        const btnUpload = document.getElementById('btn-src-upload');
+        const btnUrl = document.getElementById('btn-src-url');
+        const groupUpload = document.getElementById('group-src-upload');
+        const groupUrl = document.getElementById('group-src-url');
+
+        if (mode === 'upload') {
+            btnUpload.classList.add('bg-white', 'shadow', 'text-slate-900');
+            btnUpload.classList.remove('text-slate-500', 'hover:bg-white/50');
+            btnUrl.classList.remove('bg-white', 'shadow', 'text-slate-900');
+            btnUrl.classList.add('text-slate-500', 'hover:bg-white/50');
+            groupUpload.classList.remove('hidden');
+            groupUrl.classList.add('hidden');
+        } else {
+            btnUrl.classList.add('bg-white', 'shadow', 'text-slate-900');
+            btnUrl.classList.remove('text-slate-500', 'hover:bg-white/50');
+            btnUpload.classList.remove('bg-white', 'shadow', 'text-slate-900');
+            btnUpload.classList.add('text-slate-500', 'hover:bg-white/50');
+            groupUrl.classList.remove('hidden');
+            groupUpload.classList.add('hidden');
+        }
+    }
+
+    window.updateUrlValue = function (val) {
+        document.getElementById('real-url-input').value = val;
+    }
+
+    window.handleFileUpload = async function (input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        document.getElementById('upload-placeholder').classList.add('hidden');
+        document.getElementById('upload-loading').classList.remove('hidden');
+        document.getElementById('upload-success').classList.add('hidden');
+
+        const fd = new FormData();
+        fd.append('file', file);
+
+        try {
+            const res = await fetch('/api/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.url) {
+                document.getElementById('upload-loading').classList.add('hidden');
+                document.getElementById('upload-success').classList.remove('hidden');
+                document.getElementById('real-url-input').value = data.url;
+                const typeSelect = document.getElementById('media-type-select');
+                if (data.type === 'video') typeSelect.value = 'video';
+                else {
+                    typeSelect.value = 'image';
+                    const img = document.getElementById('preview-img');
+                    img.src = data.url;
+                    img.classList.remove('hidden');
+                }
+            } else { alert('上傳失敗'); resetUploadUI(); }
+        } catch (e) { console.error(e); alert('上傳錯誤'); resetUploadUI(); }
+    }
+
+    function resetUploadUI() {
+        document.getElementById('upload-placeholder').classList.remove('hidden');
+        document.getElementById('upload-loading').classList.add('hidden');
+        document.getElementById('upload-success').classList.add('hidden');
+        document.getElementById('file-upload-input').value = '';
+        document.getElementById('preview-img').classList.add('hidden');
+        document.getElementById('preview-img').src = '';
+    }
+
+    // Start
+    init();
+
+</script>
+{% endblock %}

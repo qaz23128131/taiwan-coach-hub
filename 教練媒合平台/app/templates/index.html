@@ -1,0 +1,191 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    /* Sport Card Grid - 4 Columns */
+    .sport-grid {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+
+    @media (min-width: 640px) {
+        .sport-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .sport-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .hero-gradient {
+        background: radial-gradient(circle at top right, rgba(37, 99, 235, 0.05), transparent 40%),
+            radial-gradient(circle at bottom left, rgba(124, 58, 237, 0.05), transparent 40%);
+    }
+
+    .sport-card-img {
+        transition: transform 0.6s cubic-bezier(0.33, 1, 0.68, 1);
+    }
+
+    .sport-card:hover .sport-card-img {
+        transform: scale(1.1);
+    }
+</style>
+
+<div class="hero-gradient -mt-10 pt-10 pb-8">
+    <!-- Hero Section -->
+    <section class="max-w-7xl mx-auto px-6 pt-10 md:pt-14 pb-10 md:pb-12 flex flex-col items-center text-center">
+        <div
+            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-full text-[10px] font-extrabold uppercase tracking-[0.2em] mb-6">
+            <i class="fas fa-bolt text-[12px]"></i>
+            TAIWAN COACH HUB • 2026 全新升級
+        </div>
+        <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 mb-4 leading-tight tracking-tight">
+            讓運動專業，<span class="text-transparent bg-clip-text premium-bg">與你零距離。</span>
+        </h1>
+        <p class="text-slate-400 text-sm md:text-base max-w-[640px] mb-8 md:mb-10 font-medium leading-normal">
+            全地區最活潑的教練媒合平台。不論是想變強的健身新手，<br class="hidden md:block">或是想探索深海與雪國的冒險者，我們都準備好了。
+        </p>
+
+        <!-- Search Box -->
+        <form action="/coaches" method="GET"
+            class="w-full max-w-4xl bg-white p-2 md:p-2.5 rounded-[2.5rem] shadow-2xl shadow-blue-900/[0.08] border border-slate-100 flex flex-col md:flex-row gap-2">
+            <div class="flex-grow flex items-center px-6 bg-slate-50 rounded-2xl h-12 md:h-14">
+                <i class="fas fa-search text-slate-300 mr-3"></i>
+                <select name="sport"
+                    class="bg-transparent w-full h-full text-slate-700 outline-none font-bold text-sm appearance-none cursor-pointer">
+                    <option value="">選擇你想學的運動</option>
+                    <option value="健身">健身教學</option>
+                    <option value="潛水">潛水訓練</option>
+                    <option value="滑雪">滑雪課程</option>
+                </select>
+            </div>
+            <div class="flex-grow flex items-center px-6 bg-slate-50 rounded-2xl h-12 md:h-14">
+                <i class="fas fa-location-dot text-slate-300 mr-3"></i>
+                <select name="city"
+                    class="bg-transparent w-full h-full text-slate-700 outline-none font-bold text-sm appearance-none cursor-pointer">
+                    <option value="">選擇上課縣市 (全地區)</option>
+                    {% for city in taiwan_areas.keys() %}
+                    <option value="{{ city }}">{{ city }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit"
+                class="btn-base btn-premium !h-12 md:!h-14 !px-12 rounded-2xl text-base shrink-0 group">
+                探索教練 <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </button>
+        </form>
+    </section>
+</div>
+<!-- Sports Overview Section (Requirement B) -->
+<section class="max-w-7xl mx-auto px-6 pt-6 pb-12">
+    <div class="mb-8">
+        <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest block mb-2">Explore Sports</span>
+        <h2 class="text-2xl font-black text-slate-900 mb-1">探索運動項目</h2>
+        <p class="text-slate-400 font-medium text-sm">選擇你感興趣的運動，找到最適合你的專業教練</p>
+    </div>
+
+    <div class="sport-grid">
+        {% for sport in sports_data %}
+        <a href="/coaches?sport={{ sport.name_zh }}"
+            class="sport-card group relative block overflow-hidden rounded-[2rem] bg-slate-100 aspect-[4/3] shadow-sm hover:shadow-2xl transition-all duration-500">
+            <!-- Background Image -->
+            <div class="absolute inset-0">
+                <img src="{{ sport.image_url }}" alt="{{ sport.name_zh }}"
+                    class="sport-card-img h-full w-full object-cover">
+                <!-- Overlay -->
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent"></div>
+            </div>
+
+            <!-- Content -->
+            <div class="absolute inset-0 p-8 flex flex-col justify-end">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h3 class="text-2xl font-black text-white mb-1">{{ sport.name_zh }}</h3>
+                        <p class="text-white/70 text-xs font-bold uppercase tracking-widest">
+                            目前 {{ sport.coach_count if sport.coach_count is not none else '—' }} 位教練
+                        </p>
+                    </div>
+                    <div
+                        class="h-12 w-12 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white border border-white/30 group-hover:bg-blue-600 group-hover:border-blue-600 transition-all duration-300">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+
+        <!-- Placeholder for future enlargement -->
+        <div
+            class="hidden lg:flex items-center justify-center border-2 border-dashed border-slate-200 rounded-[2rem] p-8 text-center bg-slate-50/50">
+            <div>
+                <div
+                    class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                    <i class="fas fa-plus"></i>
+                </div>
+                <p class="text-slate-400 font-bold text-xs">更多項目<br>敬請期待</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Elite Coach Spotlight (High Density Minimalist) -->
+{% if elite_coaches %}
+<section class="max-w-7xl mx-auto px-6 py-10 my-4 border-t border-slate-50">
+    <div class="flex items-center justify-between mb-10">
+        <div>
+            <span class="text-[10px] font-black text-amber-500 uppercase tracking-[0.2em] block mb-2">Elite
+                Professionals</span>
+            <h2 class="text-2xl font-black text-slate-900">本日嚴選菁英教練</h2>
+        </div>
+        <a href="/coaches"
+            class="text-xs font-black text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-2">
+            查看全部 <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+
+    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-12">
+        {% for coach in elite_coaches %}
+        <a href="/coaches/{{ coach.id }}" class="group block text-center">
+            <div class="relative w-20 h-20 md:w-24 md:h-24 mx-auto mb-4">
+                <!-- Premium Glow Effect on Hover -->
+                <div
+                    class="absolute -inset-2 rounded-full bg-amber-400/20 opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500 scale-50 group-hover:scale-100">
+                </div>
+
+                <!-- Avatar with Premium Border -->
+                <div
+                    class="relative h-full w-full rounded-full p-1 bg-gradient-to-tr from-slate-100 to-white shadow-sm ring-1 ring-slate-100 group-hover:ring-amber-400 transition-all duration-300">
+                    <img src="{{ coach.avatar }}" class="w-full h-full object-cover rounded-full">
+                </div>
+
+                <!-- Crown Badge -->
+                <div
+                    class="absolute -bottom-1 -right-0.5 w-7 h-7 bg-slate-900 rounded-full flex items-center justify-center border-2 border-white shadow-lg group-hover:scale-110 transition-transform">
+                    <i class="fas fa-crown text-amber-500 text-[10px]"></i>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <h3
+                    class="text-xs font-black text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-1 truncate">
+                    {{ coach.display_name }}</h3>
+                <div class="flex items-center justify-center gap-2">
+                    <div class="flex items-center gap-1">
+                        <i class="fas fa-star text-amber-400 text-[8px]"></i>
+                        <span class="text-[10px] font-black text-slate-400">{{ coach.rating|format_rating }}</span>
+                    </div>
+                    <span class="text-slate-200">/</span>
+                    <span class="text-[10px] font-black text-blue-500 uppercase tracking-tighter">{{
+                        (coach.sports|from_json)[0] }}</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+{% endblock %}

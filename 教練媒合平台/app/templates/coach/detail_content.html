@@ -1,0 +1,813 @@
+{% from "macros/avatar.html" import render_avatar %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12">
+    {# --- Define Subscription Limits --- #}
+    {% set level = coach.subscription_level or 'basic' %}
+    {% if level == 'free' %}{% set level = 'basic' %}{% endif %}
+
+    {% set limit_media = 3 %}
+    {% set limit_offers = 1 %}
+    {% set limit_faq = 0 %}
+    {% set limit_links = 0 %}
+
+    {% if level == 'pro' %}
+    {% set limit_media = 12 %}
+    {% set limit_offers = 3 %}
+    {% set limit_faq = 3 %}
+    {% set limit_links = 3 %}
+    {% elif level == 'elite' %}
+    {% set limit_media = 99 %}
+    {% set limit_offers = 99 %}
+    {% set limit_faq = 99 %}
+    {% set limit_links = 99 %}
+    {% endif %}
+    <!-- Left: Details -->
+    <div class="lg:col-span-2 space-y-16">
+        <section class="flex flex-col md:flex-row gap-10 items-start">
+            <div
+                class="w-full md:w-64 h-64 rounded-[2rem] overflow-hidden bg-white border border-slate-100 shadow-2xl relative group">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-50"></div>
+                {% set coach_sports = coach.sports|from_json %}
+                {% set sport_type = coach_sports[0] if coach_sports else None %}
+                {{ render_avatar(coach.avatar, coach.display_name, sport_type, 'full', circular=False) }}
+            </div>
+            <div class="flex-grow pt-4">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {% for tag in coach.tags | from_json %}
+                    <span
+                        class="bg-blue-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm">{{
+                        tag }}</span>
+                    {% endfor %}
+                </div>
+                <div class="flex items-center gap-4 mb-4">
+                    <h1 class="text-4xl font-black text-slate-900">{{ coach.display_name or '專業教練' }}</h1>
+                    <!-- Clickable Rating -->
+                    <button type="button" onclick="openPageReviews()"
+                        class="flex items-center gap-2 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 transition-colors rounded-xl cursor-pointer group">
+                        <i class="fas fa-star text-amber-400 text-xs group-hover:scale-110 transition-transform"></i>
+                        <span
+                            class="text-sm font-black text-amber-800 underline decoration-amber-200 underline-offset-4">{{
+                            coach.rating|rating_display(coach.rating_count) }}</span>
+                    </button>
+                    <!-- Favorite Toggle (Added for consistency) -->
+                    <button onclick="togglePageFavorite()" id="pageFavBtn"
+                        class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 hover:scale-110 transition-all">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+                <p class="text-slate-500 text-lg leading-relaxed max-w-2xl italic">
+                    "{{ coach.bio or '這位教練還沒有填寫個人介紹。' }}"
+                </p>
+            </div>
+        </section>
+
+        <!-- Dynamic Specs -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100/50">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">服務地區</span>
+                <div class="font-bold text-slate-900 text-sm">
+                    {% if coach.service_all_areas %}
+                    <span class="text-blue-600">全台灣地區</span>
+                    {% else %}
+                    <div class="flex flex-col gap-0.5">
+                        <span>{{ (coach.service_cities | from_json) | join('、') }}</span>
+                        <span class="text-[10px] text-slate-400 font-medium">{{ (coach.service_districts | from_json) |
+                            join('、') }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mt-2 pt-2 border-t border-slate-200/50">
+                    <span class="text-[9px] font-bold text-slate-400">授課方式：{{ (coach.venues | from_json) | join('、')
+                        }}</span>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100/50">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">精通客群</span>
+                <div class="flex flex-wrap gap-1">
+                    {% for g in coach.audiences | from_json %}
+                    <span class="text-[10px] font-bold text-slate-900">{{ g }}{% if not loop.last %}、{% endif %}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100/50">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">課程價格</span>
+                <span class="font-bold text-slate-900 text-sm">{{ coach.price_range or '私訊洽詢' }}</span>
+            </div>
+            <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100/50">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">教學風格</span>
+                <span class="font-bold text-slate-900 text-sm">{{ (coach.teaching_styles | from_json) | join('、') or
+                    '專業親切' }}</span>
+            </div>
+        </div>
+
+        <!-- Dynamic Showcase Sections -->
+        {% set config = coach.showcase_config|from_json %}
+        {% set order = config.order if config and config.order else ['media', 'offers', 'testimonials', 'faq', 'links']
+        %}
+        {% set visible = config.visible if config and config.visible else {} %}
+
+        <div class="space-y-12">
+            {% for section_key in order %}
+            {% if visible.get(section_key, false) %}
+
+            <!-- SECTION: MEDIA -->
+            {% if section_key == 'media' and coach.features_media|length > 0 %}
+            <section class="relative">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-2xl font-black text-slate-900">教練作品集 & 證照</h3>
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">共 {{
+                        [coach.features_media|length, limit_media]|min }} 筆作品</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {% for m in coach.features_media[:limit_media] %}
+                    <div
+                        class="aspect-square bg-slate-100 rounded-3xl border border-slate-200 overflow-hidden group relative">
+                        {% if m.type == 'video' %}
+                        <video src="{{ m.url }}" controls class="w-full h-full object-cover"></video>
+                        {% elif m.type == 'youtube' %}
+                        {% set vid = '' %}
+                        {% if 'v=' in m.url %}{% set vid = m.url.split('v=')[1].split('&')[0] %}{% endif %}
+                        {% if 'youtu.be/' in m.url %}{% set vid = m.url.split('youtu.be/')[1].split('?')[0] %}{% endif
+                        %}
+
+                        {% if vid %}
+                        <iframe src="https://www.youtube.com/embed/{{ vid }}" class="w-full h-full object-cover"
+                            frameborder="0" allowfullscreen></iframe>
+                        {% else %}
+                        <a href="{{ m.url }}" target="_blank"
+                            class="w-full h-full flex items-center justify-center bg-black text-white hover:bg-slate-900 transition-colors">
+                            <i class="fab fa-youtube text-4xl"></i>
+                        </a>
+                        {% endif %}
+                        {% else %}
+                        <div class="w-full h-full overflow-hidden cursor-zoom-in"
+                            onclick="openLightbox('{{ m.url }}'); trackEvent('media_view')">
+                            <img src="{{ m.url }}"
+                                class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                            <div
+                                class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                <p class="text-white text-xs font-bold">{{ m.title or '' }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- SECTION: OFFERS -->
+            {% elif section_key == 'offers' and coach.features_offers|length > 0 %}
+            <section>
+                <h3 class="text-2xl font-black text-slate-900 mb-6">精選課程方案</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for offer in coach.features_offers[:limit_offers] %}
+                    <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer"
+                        onclick="trackEvent('offer_click')">
+                        <div
+                            class="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-[4rem] -mr-4 -mt-4 z-0 transition-transform group-hover:scale-110">
+                        </div>
+                        <div class="relative z-10">
+                            <h4 class="text-lg font-black text-slate-900 mb-1">{{ offer.title }}</h4>
+                            <div class="flex items-baseline gap-2 mb-3">
+                                <span class="text-xl font-bold text-amber-500">{{ offer.price_text }}</span>
+                                <span class="text-xs font-bold text-slate-400">/ {{ offer.duration }}</span>
+                            </div>
+                            <p class="text-sm text-slate-600 leading-relaxed mb-4">{{ offer.description }}</p>
+
+                            {% if offer.tags %}
+                            <div class="flex gap-2">
+                                {% for t in offer.tags|from_json %}
+                                <span class="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-lg">{{
+                                    t }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+
+
+            <!-- SECTION: FAQ -->
+            {% elif section_key == 'faq' and coach.features_faq|length > 0 %}
+            <section>
+                <h3 class="text-xl font-black text-slate-900 mb-6">常見問題</h3>
+                <div class="space-y-4">
+                    {% for f in coach.features_faq[:limit_faq] %}
+                    <div class="bg-white p-4 rounded-2xl border border-slate-100">
+                        <h4 class="text-xs font-black text-slate-900 mb-1">Q: {{ f.question }}</h4>
+                        <p class="text-xs text-slate-500">{{ f.answer }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- SECTION: LINKS -->
+            {% elif section_key == 'links' and coach.features_links|length > 0 %}
+            <section>
+                <h3 class="text-xl font-black text-slate-900 mb-6">更多連結</h3>
+                <div class="flex flex-wrap gap-2">
+                    {% for l in coach.features_links[:limit_links] %}
+                    <a href="{{ l.url }}" target="_blank" onclick="trackEvent('social_click')"
+                        class="flex items-center gap-2 px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 transition-colors">
+                        <i class="fab fa-{{ l.icon }} text-lg"></i> {{ l.text }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% endif %}
+            {% endfor %}
+        </div>
+
+        <!-- Matching Logic Placeholder -->
+        <section class="p-10 bg-slate-900 rounded-[3rem] text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <h4 class="text-xl font-black mb-4">為什麼系統推薦 {{ coach.display_name }} 給你？</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex items-start gap-4">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-blue-400 shrink-0">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <p class="text-sm text-slate-400 font-medium">標籤精準匹配：教練擅長的 <span class="text-white">【{{
+                                (coach.tags | from_json)|first }}】</span> 正是您在測驗中提到的核心目標。</p>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-purple-400 shrink-0">
+                            <i class="fas fa-hand-holding-heart"></i>
+                        </div>
+                        <p class="text-sm text-slate-400 font-medium">教學風格符合：教練主打 <span class="text-white">{{
+                                coach.style }}</span>，適合您偏好的學習節奏。</p>
+                    </div>
+                </div>
+            </div>
+            <i class="fas fa-sparkles absolute -bottom-10 -right-10 text-white/5 text-[200px]"></i>
+        </section>
+    </div>
+
+    <!-- Right: Inquiry -->
+    <div class="lg:col-span-1">
+        <div class="sticky top-28 p-10 bg-white rounded-[3rem] shadow-2xl shadow-slate-200 border border-slate-100">
+            <h3 class="text-2xl font-black text-slate-900 mb-2">開始您的運動計畫</h3>
+            <p class="text-xs text-slate-400 mb-8 font-bold uppercase tracking-widest">目前已有 {{ coach.lead_count }}
+                位學員預約過</p>
+
+            {% if user %}
+            <div class="space-y-4">
+                <!-- Compact Inquiry Form (Visible by Default) -->
+                <form id="inquiryForm" class="space-y-3 mt-4 pt-4 border-t border-slate-100"
+                    onsubmit="submitInquiry(event)">
+                    <div class="space-y-3">
+                        <div>
+                            <label
+                                class="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">您的稱呼
+                                (Name)</label>
+                            <input type="text" name="name" required value="{{ user.name or '' }}"
+                                class="w-full h-10 px-3 bg-slate-50 rounded-lg text-xs font-bold border-none outline-none focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-300"
+                                placeholder="教練該如何稱呼您？">
+                        </div>
+                        <div>
+                            <label
+                                class="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">聯絡方式
+                                (Line/Phone)</label>
+                            <input type="text" name="contact" required value="{{ user.phone or '' }}"
+                                class="w-full h-10 px-3 bg-slate-50 rounded-lg text-xs font-bold border-none outline-none focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-300"
+                                placeholder="方便聯絡的資訊">
+                        </div>
+                        <div>
+                            <label
+                                class="text-[9px] font-black text-slate-400 uppercase tracking-widest pl-1 mb-1 block">想詢問的內容
+                                (Message)</label>
+                            <textarea name="message" required rows="3"
+                                class="w-full p-3 bg-slate-50 rounded-lg text-xs font-bold border-none outline-none focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-300 resize-none"
+                                placeholder="例如：想了解私人課程費用..."></textarea>
+                        </div>
+                        <input type="hidden" name="summary_json" id="hiddenSummaryJson" value="{}">
+
+                        <button type="submit"
+                            class="w-full h-12 bg-blue-600 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all mt-2">
+                            送出詢問訊息 <i class="fas fa-paper-plane ml-1"></i>
+                        </button>
+                    </div>
+                </form>
+                <!-- Medical Notice -->
+                <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 mt-6">
+                    <p class="text-[10px] text-amber-800 font-bold leading-relaxed">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        提醒：本平台提供運動教學媒合，非醫療建議。若有疼痛或身體不適，請先諮詢專業醫療人員。
+                    </p>
+                </div>
+            </div>
+            {% else %}
+            <!-- Guest Form (Keep for leads) -->
+            <div class="text-center py-8">
+                <p class="text-slate-500 font-bold mb-6">登入後即可與教練一對一諮詢或預約課程</p>
+                <a href="/login?next=/coaches/{{ coach.id }}" class="btn-base btn-premium w-full !h-14 !rounded-xl">立即登入
+                    / 註冊</a>
+            </div>
+            {% endif %}
+
+
+        </div>
+    </div>
+</div>
+
+<!-- === MODALS === -->
+
+<!-- Reviews Details Modal -->
+<div id="pageReviewsModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePageReviews()"></div>
+    <div
+        class="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+
+        <!-- Header -->
+        <div class="p-8 pb-0 flex items-center justify-between shrink-0">
+            <div>
+                <h3 class="text-2xl font-black text-slate-900">學員評價與詳情</h3>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Verified Real Student Reviews
+                </p>
+            </div>
+            <button type="button" onclick="closePageReviews()"
+                class="w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors">
+                <i class="fas fa-times text-slate-400"></i>
+            </button>
+        </div>
+
+        <!-- Scrollable Body -->
+        <div class="p-8 overflow-y-auto">
+            <!-- Rating Overview -->
+            <div class="flex flex-col sm:flex-row gap-8 mb-10">
+                <div class="text-center sm:text-left shrink-0">
+                    <div class="text-5xl font-black text-slate-900 tracking-tighter" id="pr_avg_rating">0.0</div>
+                    <div class="flex items-center justify-center sm:justify-start gap-1 my-2 text-amber-400 text-sm">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
+                            class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-[10px] font-bold text-slate-400" id="pr_rating_count">0 則評價</p>
+                </div>
+
+                <!-- Bars -->
+                <div class="flex-grow space-y-1.5 pt-1">
+                    {% for i in range(5, 0, -1) %}
+                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                        <span class="w-2">{{ i }}</span>
+                        <div class="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="pr_bar_{{ i }}" class="h-full bg-amber-400 w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-4 mb-8">
+                <button id="page_btn_review" onclick="tryOpenPageReview()" disabled
+                    class="h-12 border border-slate-200 rounded-xl text-xs font-black text-slate-400 flex items-center justify-center gap-2 transition-all">
+                    <i class="fas fa-pen"></i> 我要評價
+                </button>
+                <button id="page_btn_complain" onclick="tryOpenPageComplaint()" disabled
+                    class="h-12 border border-slate-200 rounded-xl text-xs font-black text-slate-400 flex items-center justify-center gap-2 transition-all">
+                    <i class="fas fa-exclamation-triangle"></i> 我要投訴
+                </button>
+            </div>
+            <p id="page_action_hint"
+                class="text-[10px] text-center text-amber-500 font-bold hidden mb-4 bg-amber-50 p-2 rounded-lg"></p>
+
+            <!-- Reviews List -->
+            <div class="space-y-6">
+                <h4 class="text-sm font-black text-slate-900 border-b border-slate-100 pb-4">學員評論列表</h4>
+                <div id="pr_reviews_list" class="space-y-6">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Write Review Modal -->
+<div id="pageReviewWriteModal" class="fixed inset-0 z-[110] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePageWriteReview()"></div>
+    <div class="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95">
+        <h3 class="text-xl font-black text-slate-900 mb-4">撰寫評價</h3>
+        <form id="pageReviewForm" class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">選擇課程紀錄</label>
+                <select id="pr_lesson_select" name="lesson_id"
+                    class="w-full h-12 px-4 bg-slate-50 rounded-xl text-xs font-bold border-none outline-none text-slate-700"></select>
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex gap-2 text-3xl text-slate-200 justify-center py-4" id="pr_stars">
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setPageReviewRating(1)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setPageReviewRating(2)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setPageReviewRating(3)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setPageReviewRating(4)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setPageReviewRating(5)"></i>
+                </div>
+                <input type="hidden" name="rating" id="pr_rating_input" value="5">
+            </div>
+
+            <textarea name="comment" rows="3"
+                class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none"
+                placeholder="寫下您的評價..."></textarea>
+
+            <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
+                <input type="checkbox" name="is_anonymous" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                <span class="text-xs font-black text-slate-600">匿名評價</span>
+            </label>
+            <button type="submit"
+                class="w-full h-12 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-black transition-all">送出評價</button>
+        </form>
+    </div>
+</div>
+
+<!-- Complaint Modal -->
+<div id="pageComplaintModal" class="fixed inset-0 z-[110] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closePageComplaint()"></div>
+    <div class="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95">
+        <h3 class="text-xl font-black text-rose-600 mb-4">提交投訴</h3>
+        <form id="pageComplaintForm" class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">選擇互動紀錄</label>
+                <select id="pr_comp_ref_select" name="ref_id"
+                    class="w-full h-12 px-4 bg-slate-50 rounded-xl text-xs font-bold border-none outline-none text-slate-700"></select>
+            </div>
+            <textarea name="description" required rows="3"
+                class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none"
+                placeholder="請描述您遇到的問題..."></textarea>
+            <button type="submit"
+                class="w-full h-12 bg-rose-600 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-rose-700 transition-all">送出投訴</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    async function submitInquiry(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const oldText = submitBtn.innerHTML;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 傳送中...';
+
+        try {
+            const res = await fetch(`/coaches/${PAGE_COACH_ID}/inquiry`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success' && data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    // Fallback or error
+                    window.location.reload();
+                }
+            } else {
+                const err = await res.text();
+                alert('發送失敗: ' + err);
+                console.error(err);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = oldText;
+            }
+        } catch (e) {
+            console.error(e);
+            alert('系統忙碌中');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = oldText;
+        }
+    }
+    const PAGE_COACH_ID = parseInt("{{ coach.id }}");
+    let pageEligibility = { can_review: false, can_complain: false };
+
+    // Favorites
+    let isPageFav = false;
+    async function loadPageFavorite() {
+        try {
+            const res = await fetch('/api/me/favorites');
+            const data = await res.json();
+            const set = new Set(data.coach_ids);
+            isPageFav = set.has(PAGE_COACH_ID);
+            updatePageFavUI();
+        } catch (e) { }
+    }
+
+    function updatePageFavUI() {
+        const btn = document.getElementById('pageFavBtn');
+        const i = btn.querySelector('i');
+        if (isPageFav) {
+            btn.classList.add('bg-rose-50', 'text-rose-500');
+            btn.classList.remove('bg-slate-50', 'text-slate-300');
+            i.classList.remove('far'); i.classList.add('fas');
+        } else {
+            btn.classList.remove('bg-rose-50', 'text-rose-500');
+            btn.classList.add('bg-slate-50', 'text-slate-300');
+            i.classList.remove('fas'); i.classList.add('far');
+        }
+    }
+
+    async function togglePageFavorite() {
+        isPageFav = !isPageFav;
+        updatePageFavUI();
+        try {
+            await fetch('/api/me/favorites/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coach_id: PAGE_COACH_ID })
+            });
+        } catch (e) { }
+    }
+
+    loadPageFavorite();
+
+    // Reviews Main Modal
+    async function openPageReviews() {
+        document.getElementById('pageReviewsModal').classList.remove('hidden');
+
+        // Load Reviews
+        const rRes = await fetch(`/api/coaches/${PAGE_COACH_ID}/reviews`);
+        const rData = await rRes.json();
+
+        document.getElementById('pr_avg_rating').innerText = rData.avg_rating;
+        document.getElementById('pr_rating_count').innerText = rData.rating_count + " 則評價";
+
+        // Bars
+        for (let i = 1; i <= 5; i++) {
+            const count = rData.distribution[i] || 0;
+            const pct = rData.rating_count > 0 ? (count / rData.rating_count) * 100 : 0;
+            const bar = document.getElementById(`pr_bar_${i}`);
+            if (bar) bar.style.width = pct + "%";
+        }
+
+        // List
+        const list = document.getElementById('pr_reviews_list');
+        if (rData.reviews.length === 0) {
+            list.innerHTML = `<p class="text-center text-slate-400 text-xs py-4">目前尚無評論</p>`;
+        } else {
+            list.innerHTML = rData.reviews.map(r => `
+                <div class="bg-slate-50 p-6 rounded-2xl space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-black text-slate-900">${r.is_anonymous ? '匿名學員' : r.student_name}</span>
+                            <div class="flex text-amber-400 text-[10px] gap-0.5">
+                                ${Array(5).fill(0).map((_, i) => `<i class="${i < r.rating ? 'fas' : 'far'} fa-star"></i>`).join('')}
+                            </div>
+                        </div>
+                        <span class="text-[9px] font-bold text-slate-300 self-start sm:self-auto">${r.date || ''}</span>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600 leading-relaxed tracking-wide text-justify">${r.comment || '此用戶未填寫評論'}</p>
+                </div>
+            `).join('');
+        }
+
+        // Load Eligibility
+        const eRes = await fetch(`/api/coaches/${PAGE_COACH_ID}/interaction-eligibility`);
+        pageEligibility = await eRes.json();
+
+        updatePageActionBtn('page_btn_review', pageEligibility.can_review, 'text-blue-600', 'border-blue-200', 'bg-blue-50');
+        updatePageActionBtn('page_btn_complain', pageEligibility.can_complain, 'text-rose-600', 'border-rose-200', 'bg-rose-50');
+
+        const hint = document.getElementById('page_action_hint');
+        if (!pageEligibility.can_review && !pageEligibility.can_complain) {
+            hint.innerText = (pageEligibility.review_reason || '') + (pageEligibility.complaint_reason ? ' | ' + pageEligibility.complaint_reason : '');
+            hint.classList.remove('hidden');
+        } else {
+            hint.classList.add('hidden');
+        }
+    }
+
+    function closePageReviews() { document.getElementById('pageReviewsModal').classList.add('hidden'); }
+
+    function updatePageActionBtn(id, enabled, c1, c2, c3) {
+        const btn = document.getElementById(id);
+        if (enabled) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'text-slate-400');
+            btn.classList.add(c1, c2, c3, 'hover:scale-105', 'shadow-sm');
+        }
+    }
+
+    // Write Review
+    function tryOpenPageReview() {
+        if (!pageEligibility.can_review) return;
+        document.getElementById('pageReviewWriteModal').classList.remove('hidden');
+        const sel = document.getElementById('pr_lesson_select');
+        sel.innerHTML = '';
+        pageEligibility.review_booking_ids.forEach(id => {
+            sel.innerHTML += `<option value="${id}">課程紀錄 #${id}</option>`;
+        });
+        document.getElementById('pageReviewForm').reset();
+        setPageReviewRating(5);
+    }
+
+    function closePageWriteReview() { document.getElementById('pageReviewWriteModal').classList.add('hidden'); }
+
+    function setPageReviewRating(r) {
+        document.getElementById('pr_rating_input').value = r;
+        const stars = document.getElementById('pr_stars').children;
+        for (let i = 0; i < 5; i++) {
+            if (i < r) { stars[i].classList.add('fas', 'text-amber-400'); stars[i].classList.remove('far', 'text-slate-200'); }
+            else { stars[i].classList.remove('fas', 'text-amber-400'); stars[i].classList.add('far', 'text-slate-200'); }
+        }
+    }
+
+    document.getElementById('pageReviewForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            lesson_id: parseInt(e.target.lesson_id.value),
+            rating: parseInt(e.target.rating.value),
+            comment: e.target.comment.value,
+            is_anonymous: e.target.is_anonymous.checked
+        };
+        try {
+            const res = await fetch(`/api/coaches/${PAGE_COACH_ID}/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                alert('評價已提交！');
+                closePageWriteReview();
+                openPageReviews(); // Refresh
+            } else {
+                const err = await res.json();
+                alert('提交失敗: ' + err.detail);
+            }
+        } catch (e) { alert('系統錯誤'); }
+    }
+
+    // Complaint
+    function tryOpenPageComplaint() {
+        if (!pageEligibility.can_complain) return;
+        document.getElementById('pageComplaintModal').classList.remove('hidden');
+        const sel = document.getElementById('pr_comp_ref_select');
+        sel.innerHTML = '';
+        pageEligibility.complaint_booking_ids.forEach(id => sel.innerHTML += `<option value="lesson:${id}">課程紀錄 #${id}</option>`);
+        pageEligibility.complaint_thread_ids.forEach(id => sel.innerHTML += `<option value="thread:${id}">諮詢對話 #${id}</option>`);
+    }
+    function closePageComplaint() { document.getElementById('pageComplaintModal').classList.add('hidden'); }
+
+    document.getElementById('pageComplaintForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const refVal = e.target.ref_id.value;
+        const [type, id] = refVal.split(':');
+        const data = {
+            coach_id: PAGE_COACH_ID,
+            category: 'other',
+            description: e.target.description.value,
+            is_anonymous: false
+        };
+        if (type === 'lesson') data.lesson_id = parseInt(id);
+        else data.thread_id = parseInt(id);
+
+        try {
+            const res = await fetch(`/api/coaches/${PAGE_COACH_ID}/complaints`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                alert('投訴已提交，平台將介入調查。');
+                closePageComplaint();
+            } else {
+                const err = await res.json();
+                alert('提交失敗: ' + err.detail);
+            }
+        } catch (e) { alert('系統錯誤'); }
+    }
+
+    window.addEventListener('load', () => {
+        const summaryData = sessionStorage.getItem('coachMatchSummary');
+        if (summaryData) {
+            document.getElementById('summaryShareBox').classList.remove('hidden');
+            const data = JSON.parse(summaryData);
+            // Initial set
+            updateSharedSummary();
+            // Listen for radio changes
+            document.querySelectorAll('input[name="share_level"]').forEach(radio => {
+                radio.addEventListener('change', updateSharedSummary);
+            });
+        }
+    });
+
+    function updateSharedSummary() {
+        const level = document.querySelector('input[name="share_level"]:checked')?.value || 'full';
+        const summaryDataParam = sessionStorage.getItem('coachMatchSummary');
+        if (!summaryDataParam) return;
+
+        const summaryData = JSON.parse(summaryDataParam);
+
+        let shareData = { ...summaryData };
+        if (level === 'general') {
+            delete shareData.special;
+            delete shareData.other;
+        } else if (level === 'none') {
+            shareData = {};
+        }
+
+        const input = document.getElementById('hiddenSummaryJson');
+        if (input) input.value = JSON.stringify(shareData);
+    }
+
+    function toggleInquiryForm() {
+        const form = document.getElementById('inquiryForm');
+        const btn = document.getElementById('btnStartConsult');
+
+        if (form.classList.contains('hidden')) {
+            form.classList.remove('hidden');
+            form.classList.add('animate-in', 'slide-in-from-top-4', 'fade-in');
+            btn.classList.add('hidden'); // Hide the start button to focus on form
+        } else {
+            form.classList.add('hidden');
+            btn.classList.remove('hidden');
+        }
+    }
+
+    // Legacy direct start function (kept for reference or quick-start if needed in future)
+    /*
+    async function startConsultation() { ... } 
+    */
+
+    async function startBooking() {
+        // Simple confirmation before booking
+        if (!confirm('確定要送出預約申請嗎？教練確認後將通知您。')) return;
+
+        try {
+            const res = await fetch('/api/bookings/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coach_id: PAGE_COACH_ID, sport_type: 'fitness' })
+                // In real app, sport_type should be selected from dropdown if coach has multiple.
+                // Assuming 'fitness' or using first sport for MVP.
+            });
+
+            if (res.ok) {
+                alert('預約申請已送出！請等待教練確認。\n您可以前往「學員中心」查看進度。');
+                location.reload();
+            } else {
+                const err = await res.json();
+                alert('預約失敗: ' + (err.detail || '未知錯誤'));
+            }
+        } catch (e) { console.error(e); alert('系統忙碌中'); }
+    }
+</script>
+
+<!-- Lightbox Modal -->
+<div id="lightbox" class="fixed inset-0 bg-black/95 z-[9999] hidden items-center justify-center p-4 backdrop-blur-sm"
+    onclick="closeLightbox()">
+    <img id="lightbox-img"
+        class="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-in zoom-in-95 duration-300 select-none"
+        onclick="event.stopPropagation()">
+    <button
+        class="absolute top-6 right-6 text-white text-4xl hover:text-slate-300 transition-colors w-12 h-12 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20"><i
+            class="fas fa-times"></i></button>
+</div>
+
+<script>
+    function openLightbox(url) {
+        const lb = document.getElementById('lightbox');
+        const img = document.getElementById('lightbox-img');
+        if (lb && img) {
+            img.src = url;
+            lb.classList.remove('hidden');
+            lb.classList.add('flex');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling
+        }
+    }
+
+    function closeLightbox() {
+        const lb = document.getElementById('lightbox');
+        if (lb) {
+            lb.classList.add('hidden');
+            lb.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+    }
+</script>
+<script>
+    async function trackEvent(eventType) {
+        if (!eventType) return;
+        try {
+            await fetch('/api/events', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    event_type: eventType,
+                    coach_id: {{ coach.id }}
+                })
+    });
+    console.log('Tracked:', eventType);
+        } catch (e) {
+        console.error('Tracking failed', e);
+    }
+    }
+</script>

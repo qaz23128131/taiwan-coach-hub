@@ -1,0 +1,154 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto pb-20 px-4">
+    <!-- Header: Consistent with Admin Center / Workbench -->
+    <div class="flex flex-col md:flex-row justify-between items-end mb-12 gap-6 pt-10">
+        <div>
+            <h1 class="text-4xl font-black text-slate-900 mb-2">教練審核中心 <span class="text-purple-600">Coach Review
+                    Center</span></h1>
+            <p class="text-slate-500 font-bold text-sm">審核教練提交的專業證照、教學經歷與個人簡介，確保平台服務品質。</p>
+        </div>
+
+        <a href="/admin"
+            class="btn-base bg-slate-100 text-slate-600 hover:bg-slate-200 px-8 rounded-2xl font-black text-sm flex items-center gap-2 transition-all">
+            <i class="fas fa-home text-xs"></i> 管理員首頁
+        </a>
+    </div>
+
+    <!-- Section 1: KPI Stats (Consistent with Admin Center / Workbench) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+        <div class="bg-white/80 p-7 rounded-[2.5rem] border border-white backdrop-blur-xl shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span> 待處理教練數
+            </div>
+            <div class="text-3xl font-black text-slate-900">{{ pending_count }}</div>
+        </div>
+        <div class="bg-white/80 p-7 rounded-[2.5rem] border border-white backdrop-blur-xl shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">本週新增教練</div>
+            <div class="text-3xl font-black text-slate-900">{{ new_this_week }} <span
+                    class="text-xs text-emerald-500 ml-1"><i class="fas fa-caret-up"></i></span></div>
+        </div>
+        <div class="bg-white/80 p-7 rounded-[2.5rem] border border-white backdrop-blur-xl shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">審核通過率</div>
+            <div class="text-3xl font-black text-slate-900">{% if approval_rate != '—' %}{{ approval_rate }}%{% else
+                %}—{% endif %}</div>
+        </div>
+        <div class="bg-white/80 p-7 rounded-[2.5rem] border border-white backdrop-blur-xl shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">平均審核耗時</div>
+            <div class="text-3xl font-black text-slate-900">{{ avg_time }}</div>
+        </div>
+    </div>
+
+    <!-- Main List Card (Glass style consistent with Admin Center) -->
+    <div class="bg-white rounded-[3rem] border border-white shadow-2xl shadow-slate-200/50 overflow-hidden">
+        <div
+            class="px-10 py-8 border-b border-slate-50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div>
+                <h3 class="text-xl font-black text-slate-900 mb-1">所有教練申請</h3>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-relaxed">
+                    包含新教練入駐以及現有教練資料異動審核</p>
+            </div>
+
+            <!-- Segmented Control Tabs (Capsule style) -->
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200/30 shrink-0">
+                <a href="/admin/coaches?status_filter=PENDING_REVIEW"
+                    class="px-6 py-2 rounded-xl text-xs font-black transition-all {% if current_status == 'PENDING_REVIEW' %}bg-white text-purple-600 shadow-sm{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+                    待審核
+                </a>
+                <a href="/admin/coaches?status_filter=APPROVED"
+                    class="px-6 py-2 rounded-xl text-xs font-black transition-all {% if current_status == 'APPROVED' %}bg-white text-emerald-600 shadow-sm{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+                    已核准
+                </a>
+                <a href="/admin/coaches?status_filter=REJECTED"
+                    class="px-6 py-2 rounded-xl text-xs font-black transition-all {% if current_status == 'REJECTED' %}bg-white text-rose-600 shadow-sm{% else %}text-slate-500 hover:text-slate-800{% endif %}">
+                    已退回
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-50/50 border-b border-slate-100">
+                        <th class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">教練資訊</th>
+                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">申請類型</th>
+                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">運動項目</th>
+                        <th class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">提交時間</th>
+                        <th
+                            class="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+                            操作</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    {% for coach in coaches %}
+                    <tr class="hover:bg-slate-50/50 transition cursor-pointer group"
+                        onclick="location.href='/admin/coaches/{{ coach.id }}/preview'">
+                        <td class="px-10 py-8">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-100">
+                                    <img src="{{ coach.avatar }}" class="w-full h-full object-cover"
+                                        onerror="this.src='https://api.dicebear.com/7.x/adventurer/svg?seed={{ coach.display_name }}'">
+                                </div>
+                                <div>
+                                    <div class="text-sm font-black text-slate-900 mb-0.5">{{ coach.display_name }}</div>
+                                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">UID: {{
+                                        coach.user_id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-8 py-8">
+                            {% if coach.submit_type == 'NEW' %}
+                            <span
+                                class="px-3 py-1 bg-blue-50 text-blue-600 text-[9px] font-black rounded-full uppercase tracking-widest border border-blue-100">新教練申請</span>
+                            {% else %}
+                            <span
+                                class="px-3 py-1 bg-purple-50 text-purple-600 text-[9px] font-black rounded-full uppercase tracking-widest border border-purple-100">資料更新審核</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-8">
+                            <div class="flex flex-wrap gap-1 max-w-[150px]">
+                                {% for s in coach.sports|from_json %}
+                                <span
+                                    class="text-[9px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase">{{
+                                    s }}</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="px-8 py-8 text-xs font-bold text-slate-400">
+                            {{ coach.submitted_at.strftime('%Y-%m-%d %H:%M') if coach.submitted_at else '—' }}
+                        </td>
+                        <td class="px-10 py-8 text-right">
+                            {% if current_status == 'PENDING_REVIEW' %}
+                            <a href="/admin/coaches/{{ coach.id }}/preview"
+                                class="h-10 px-6 bg-purple-600 text-white rounded-xl text-xs font-black shadow-lg shadow-purple-200 group-hover:bg-purple-700 transition-all flex items-center justify-center gap-2 ml-auto">
+                                預覽並審核 <i class="fas fa-arrow-right text-[10px]"></i>
+                            </a>
+                            {% else %}
+                            <a href="/admin/coaches/{{ coach.id }}/preview"
+                                class="h-10 px-6 bg-slate-100 text-slate-600 rounded-xl text-xs font-black hover:bg-slate-200 transition-all flex items-center justify-center gap-2 ml-auto">
+                                查看詳情 <i class="fas fa-search text-[10px]"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="py-40">
+                            <div class="flex flex-col items-center justify-center">
+                                <div
+                                    class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mb-6 border border-slate-100/50">
+                                    <i class="fas fa-user-check text-3xl"></i>
+                                </div>
+                                <p class="text-slate-400 italic text-sm font-bold">目前沒有符合此狀態的教練申請</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

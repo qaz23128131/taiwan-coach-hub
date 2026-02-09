@@ -1,0 +1,1172 @@
+{% extends "layout.html" %}
+{% from "macros/avatar.html" import render_avatar %}
+
+{% block content %}
+<style>
+    /* Horizontal Filter Bar Styles */
+    .filter-bar {
+        position: sticky;
+        top: 80px;
+        z-index: 40;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid #f1f5f9;
+        margin: -40px -24px 24px -24px;
+        padding: 16px 24px;
+    }
+
+    .filter-pill {
+        height: 2.75rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        border-radius: 1rem;
+        border-width: 1.5px;
+        border-color: #f1f5f9;
+        background-color: white;
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+    }
+
+    .filter-pill:hover {
+        border-color: #3b82f6;
+        background-color: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    /* Coach Card Grid - 4 Columns */
+    .coach-grid {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+
+    @media (min-width: 640px) {
+        .coach-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .coach-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    @media (min-width: 1280px) {
+        .coach-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+    }
+
+    .modal-body {
+        max-height: calc(90vh - 180px);
+        overflow-y: auto;
+    }
+
+    input[type='range'] {
+        appearance: none;
+        -webkit-appearance: none;
+        background-color: #e2e8f0;
+        height: 0.375rem;
+        border-radius: 9999px;
+        outline: none;
+    }
+
+    input[type='range']::-webkit-slider-thumb {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1.25rem;
+        height: 1.25rem;
+        background-color: #2563eb;
+        border: 4px solid white;
+        border-radius: 9999px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: transform 0.15s ease;
+    }
+
+    input[type='range']::-webkit-slider-thumb:active {
+        transform: scale(0.9);
+    }
+
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.75rem;
+        background-color: #eff6ff;
+        color: #1e40af;
+        border-radius: 9999px;
+        border: 1px solid #dbeafe;
+        font-size: 10px;
+        font-weight: 900;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .tag-chip:hover {
+        background-color: #dbeafe;
+        border-color: #bfdbfe;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+
+<!-- Enhanced Filter Bar (Desktop) -->
+<div class="filter-bar hidden lg:block shadow-sm">
+    <div class="max-w-7xl mx-auto space-y-4">
+        <form id="desktopFilterForm" class="space-y-4" onsubmit="return handleFilterSubmit(event)">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="openQuiz()"
+                    class="h-9 px-4 premium-bg text-white rounded-lg text-[10px] font-black flex items-center gap-1.5 shadow-lg shadow-blue-500/10 active:scale-95 transition-all shrink-0">
+                    <i class="fas fa-magic scale-90"></i> 智慧配對測驗
+                </button>
+
+                <!-- Sport Select -->
+                <select name="sport" id="filterSport"
+                    class="h-9 px-2 rounded-lg border border-slate-100 bg-white text-[11px] font-black text-slate-600 focus:border-blue-500 outline-none cursor-pointer">
+                    <option value="">所有運動</option>
+                    <option value="健身" {% if sport_filter=='健身' %}selected{% endif %}>🏋️ 健身</option>
+                    <option value="潛水" {% if sport_filter=='潛水' %}selected{% endif %}>🤿 潛水</option>
+                    <option value="滑雪" {% if sport_filter=='滑雪' %}selected{% endif %}>⛷️ 滑雪</option>
+                </select>
+
+                <!-- Area Select -->
+                <select name="city" id="filterCity"
+                    class="h-9 px-2 rounded-lg border border-slate-100 bg-white text-[11px] font-black text-slate-600 focus:border-blue-500 outline-none cursor-pointer">
+                    <option value="">全地區</option>
+                    {% for city in taiwan_areas.keys() %}
+                    <option value="{{ city }}" {% if city_filter==city %}selected{% endif %}>{{ city }}</option>
+                    {% endfor %}
+                </select>
+
+                <!-- Budget -->
+                <div class="relative group">
+                    <div
+                        class="h-9 px-3 rounded-lg border border-slate-100 bg-white text-[11px] font-black text-slate-600 flex items-center gap-1 cursor-pointer hover:border-blue-50 transition-all">
+                        <span>預算: <span id="budgetDisplay" class="text-blue-600">NT$ {{ budget_max or '3000'
+                                }}</span></span>
+                        <i class="fas fa-chevron-down text-[9px] text-slate-300 ml-1"></i>
+                    </div>
+                    <div
+                        class="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl shadow-2xl border border-slate-100 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">設定上限</p>
+                        <input type="range" name="budget_max" id="filterBudget" min="500" max="6000" step="100"
+                            value="{{ budget_max or 3000 }}" class="w-full h-1.5"
+                            oninput="document.getElementById('budgetDisplay').innerText = 'NT$ ' + this.value">
+                        <div class="flex justify-between mt-2 text-[9px] font-black text-slate-400">
+                            <span>500</span>
+                            <span>6000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-6 w-px bg-slate-100 mx-1"></div>
+
+                <!-- Tags Area -->
+                <div class="flex-grow flex items-center min-w-0 px-1 overflow-visible">
+                    <div id="noQuizPrompt" class="hidden">
+                        <button type="button" onclick="openQuiz()"
+                            class="text-[9px] font-black text-slate-300 hover:text-blue-500 transition-colors uppercase tracking-widest">
+                            <i class="fas fa-sparkles text-blue-200 mr-1"></i> 點此開啟智慧篩選測驗
+                        </button>
+                    </div>
+                    <div id="quizTagsContainer" class="flex flex-wrap items-center gap-1.5 py-1"></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-2 shrink-0 border-l border-slate-100 pl-3">
+                    <div id="dirtyHint"
+                        class="hidden items-center gap-1.5 px-2 py-1 bg-amber-50 rounded-md border border-amber-100 animate-pulse">
+                        <i class="fas fa-info-circle text-amber-500 text-[9px]"></i>
+                        <span class="text-[9px] font-black text-amber-600">尚未套用變更</span>
+                    </div>
+                    <button type="button" onclick="openQuickAdjust()"
+                        class="text-[9px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest px-2 flex items-center gap-1.5 transition-all">
+                        <i class="fas fa-sliders-h scale-90"></i> 快速調整
+                    </button>
+                    <a href="/coaches"
+                        class="text-[9px] font-black text-slate-400 hover:text-rose-500 px-2 uppercase tracking-widest">重置</a>
+                    <button type="submit" id="applyFilterBtn"
+                        class="h-9 px-5 bg-slate-100 text-slate-400 rounded-lg text-[10px] font-black transition-all">套用篩選</button>
+                </div>
+
+                <!-- Sort -->
+                <div class="pl-3 border-l border-slate-100 flex items-center gap-2 shrink-0">
+                    <span class="text-[9px] font-black text-slate-300 uppercase">排序</span>
+                    <select name="sort_by" id="filterSort"
+                        class="h-9 bg-transparent border-none text-[11px] font-black text-slate-900 focus:ring-0 p-0 cursor-pointer">
+                        <option value="recommended" {% if sort_by=='recommended' %}selected{% endif %}>智慧推薦</option>
+                        <option value="price_asc" {% if sort_by=='price_asc' %}selected{% endif %}>價格: 低➜高</option>
+                        <option value="rating_desc" {% if sort_by=='rating_desc' %}selected{% endif %}>評分: 高➜低</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="space-y-10">
+    <div class="flex items-center justify-between group">
+        <div>
+            <h2 class="text-2xl font-black text-slate-900 flex items-center gap-3">
+                {% if sport_filter %}{{ sport_filter }}教練列表{% else %}探索認證教練{% endif %}
+                <span class="text-blue-600/20 font-black text-xl">/</span>
+                <span class="text-slate-300 font-bold text-lg">{{ coaches|length }}位</span>
+            </h2>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1 italic">
+                根據您的「{{ sort_by }}」規則排序中
+            </p>
+        </div>
+    </div>
+
+    {% if coaches|length == 0 %}
+    <div class="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+        <h3 class="text-xl font-black text-slate-800 mb-2">找不到符合條件的教練</h3>
+        <p class="text-sm text-slate-400 font-bold mb-8">建議放寬條件或重新測驗</p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="/coaches"
+                class="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black shadow-xl">重置所有條件</a>
+            <button onclick="openQuiz()"
+                class="px-8 py-4 bg-blue-50 text-blue-600 rounded-2xl text-xs font-black">重新進行測驗</button>
+        </div>
+    </div>
+    {% else %}
+    <div class="coach-grid">
+        {% for coach in coaches %}
+        <div
+            class="coach-card rounded-2xl overflow-hidden flex flex-col bg-white shadow-sm hover:shadow-lg transition-all duration-500 border border-slate-100 group">
+            <div class="relative aspect-[5/4] bg-slate-50 overflow-hidden border-b border-slate-50">
+                {% set coach_sports = coach.sports|from_json %}
+                {% set sport_type = coach_sports[0] if coach_sports else None %}
+                {{ render_avatar(coach.avatar, coach.display_name, sport_type, 'full', circular=False) }}
+                <div
+                    class="absolute top-3 left-3 z-20 flex items-center gap-1 px-2 py-1 bg-white/95 rounded-full shadow-sm border border-slate-100/50">
+                    <i class="fas fa-shield-bolt text-blue-600 text-[8px]"></i>
+                    <span class="text-[7px] font-black text-slate-900 uppercase tracking-tighter">Verified</span>
+                </div>
+                <!-- Favorite Button -->
+                <button onclick="toggleFavorite(event, {{ coach.id }})"
+                    class="absolute top-3 right-3 z-30 w-8 h-8 rounded-full bg-white/60 backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 active:scale-95 transition-all group/fav"
+                    data-favorite-btn="{{ coach.id }}">
+                    <i class="far fa-heart text-slate-400 text-sm group-hover/fav:text-rose-500 transition-colors"></i>
+                </button>
+            </div>
+            <!-- Elite coaches get a special gradient border effect -->
+            <div
+                class="p-4 flex-grow flex flex-col {% if coach.subscription_level == 'elite' %}relative before:absolute before:inset-0 before:p-[2px] before:bg-gradient-to-br before:from-amber-400 before:to-purple-600 before:rounded-b-2xl before:-z-10 before:content-['']{% endif %}">
+                <div class="flex-grow">
+                    <div class="flex items-center justify-between mb-1">
+                        <h3
+                            class="text-sm font-black text-slate-900 truncate group-hover:text-blue-600 transition-colors flex-grow">
+                            {{ coach.display_name }}
+                        </h3>
+
+                        <!-- Rating -->
+                        <div class="flex items-center gap-1 cursor-pointer hover:bg-slate-50 px-1.5 py-0.5 rounded-lg transition-colors shrink-0"
+                            onclick="openCoachReviews({{ coach.id }}, '{{ coach.display_name }}', '{{ coach.avatar }}', '{{ sport_type if sport_type else "
+                            專業教練" }}')">
+                            <i class="fas fa-star text-amber-400 text-[9px]"></i>
+                            <span class="text-[10px] font-black text-slate-700">{{ coach.rating|format_rating }}</span>
+                            <span class="text-[8px] font-bold text-slate-300 ml-0.5">({{ coach.rating_count }})</span>
+                        </div>
+                    </div>
+
+                    <!-- Plan Badge -->
+                    {% if coach.subscription_level == 'elite' %}
+                    <div
+                        class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-900 rounded-md shadow-lg shadow-purple-500/20 border border-slate-800 mb-2">
+                        <i class="fas fa-crown text-[8px] text-amber-500"></i>
+                        <span class="text-[9px] font-black text-amber-500 uppercase tracking-tight">菁英教練</span>
+                    </div>
+                    {% elif coach.subscription_level == 'pro' %}
+                    <div
+                        class="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-600 rounded-md shadow-md shadow-blue-500/20 mb-2">
+                        <i class="fas fa-gem text-[8px] text-white"></i>
+                        <span class="text-[9px] font-black text-white uppercase tracking-tight">進階教練</span>
+                    </div>
+                    {% endif %}
+
+                    <p class="text-[10px] font-bold text-slate-400 line-clamp-1 mb-1.5">
+                        {{ coach.bio[:20] }}...
+                    </p>
+
+                    <div class="flex flex-wrap gap-1 mb-3">
+                        {% set card_tags = (coach.specialties|from_json) + (coach.teaching_styles|from_json) %}
+                        {% for tag in card_tags[:4] %}
+                        <span
+                            class="text-[10px] font-black text-blue-600 bg-blue-50/50 px-1.5 py-0.5 rounded-md border border-blue-100/30 uppercase tracking-tighter">{{
+                            tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-slate-50 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-black text-slate-900">NT$ {{ coach.price_min }}<span
+                                class="text-[8px] text-slate-300 font-bold ml-0.5">/HR</span></span>
+                    </div>
+                    <a href="/coaches/{{ coach.id }}"
+                        class="h-8 px-3.5 premium-bg text-white rounded-lg text-[9px] font-black shadow-md hover:scale-105 active:scale-95 transition-all flex items-center">預約諮詢</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- QUICK ADJUST MODAL -->
+<div id="quickAdjustModal" class="fixed inset-0 z-[110] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeQuickAdjust()"></div>
+    <div
+        class="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div class="px-10 py-8 border-b border-slate-50 flex justify-between items-center shrink-0">
+            <div>
+                <h2 class="text-xl font-black text-slate-900">快速調整篩選條件</h2>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">調整後需按下「套用變更」才會更新清單</p>
+            </div>
+            <button onclick="closeQuickAdjust()"
+                class="w-10 h-10 rounded-xl hover:bg-slate-50 text-slate-300 hover:text-slate-900 transition-all"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <form id="quickAdjustForm" class="modal-body p-10 space-y-12" onsubmit="applyQuickAdjust(event)">
+            <div id="qa_common_fields" class="space-y-10">
+                <div class="space-y-4">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">教學風格
+                        (最多2項)</label>
+                    <div class="grid grid-cols-2 gap-2" id="qa_teaching_styles"></div>
+                </div>
+                <div class="space-y-4">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">適合族群</label>
+                    <div class="grid grid-cols-2 gap-2" id="qa_audiences"></div>
+                </div>
+                <div class="space-y-4">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">上課型態/場地</label>
+                    <div class="grid grid-cols-2 gap-2" id="qa_venues"></div>
+                </div>
+            </div>
+            <div id="qa_sport_specific" class="pt-8 border-t border-slate-100 space-y-10"></div>
+        </form>
+        <div class="px-10 py-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center shrink-0">
+            <button onclick="openQuiz(); closeQuickAdjust();"
+                class="text-xs font-black text-blue-600 hover:underline">重新測驗</button>
+            <div class="flex gap-3">
+                <button onclick="closeQuickAdjust()"
+                    class="h-14 px-8 bg-white border border-slate-200 rounded-2xl text-xs font-black text-slate-500">取消</button>
+                <button type="submit" form="quickAdjustForm"
+                    class="h-14 px-10 premium-bg text-white rounded-2xl text-xs font-black shadow-xl active:scale-95">套用變更</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SMART MATCH MODAL -->
+<div id="quizModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeQuiz()"></div>
+    <div
+        class="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div class="px-10 py-8 border-b border-slate-50 flex justify-between items-center">
+            <h2 class="text-xl font-black text-slate-900">智慧配對測驗</h2>
+            <button onclick="closeQuiz()"
+                class="w-10 h-10 rounded-xl hover:bg-slate-50 text-slate-300 transition-all"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <div id="quizContent" class="modal-body p-10"></div>
+        <div class="px-10 py-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center shrink-0">
+            <button id="quizBackBtn" onclick="prevStep()"
+                class="text-xs font-black text-slate-400 hover:text-slate-900 transition-all invisible flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> 上一題
+            </button>
+            <button onclick="nextStep()"
+                class="h-16 px-12 premium-bg text-white rounded-2xl font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all">
+                <span id="nextBtnText">下一步</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Coach Details & Reviews Modal -->
+<div id="coachDetailsModal" class="fixed inset-0 z-[120] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onclick="closeCoachDetails()"></div>
+    <div
+        class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+
+        <!-- Header -->
+        <div class="relative h-32 bg-slate-50 shrink-0">
+            <button type="button" onclick="closeCoachDetails()"
+                class="absolute top-6 right-6 w-10 h-10 bg-white/50 backdrop-blur rounded-full flex items-center justify-center text-slate-500 hover:bg-white transition-all shadow-sm z-10"><i
+                    class="fas fa-times"></i></button>
+
+            <!-- Modal Favorite Button -->
+            <button onclick="toggleFavorite(event, currentCoachId)"
+                class="absolute top-6 right-20 w-10 h-10 bg-white/50 backdrop-blur rounded-full flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-white transition-all shadow-sm z-10 group/modal-fav"
+                id="cd_fav_btn">
+                <i class="far fa-heart text-sm group-hover/modal-fav:text-rose-500 transition-colors"></i>
+            </button>
+            <div class="absolute -bottom-10 left-8 flex items-end gap-6">
+                <div class="w-24 h-24 rounded-[2rem] bg-white p-1 shadow-lg">
+                    <img id="cd_avatar" src="" class="w-full h-full object-cover rounded-[1.8rem]">
+                </div>
+                <div class="mb-3">
+                    <h3 id="cd_name" class="text-2xl font-black text-slate-900 leading-none mb-1"></h3>
+                    <p id="cd_sport" class="text-xs font-bold text-slate-400 uppercase tracking-widest"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="mt-12 px-8 flex-grow overflow-y-auto space-y-8 pb-8">
+
+            <!-- Rating Overview -->
+            <div class="flex flex-col sm:flex-row gap-8">
+                <div class="text-center sm:text-left shrink-0">
+                    <div class="text-5xl font-black text-slate-900 tracking-tighter" id="cd_avg_rating">0.0</div>
+                    <div class="flex items-center justify-center sm:justify-start gap-1 my-2 text-amber-400 text-sm">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i
+                            class="fas fa-star"></i><i class="fas fa-star"></i>
+                    </div>
+                    <p class="text-[10px] font-bold text-slate-400" id="cd_rating_count">0 則評價</p>
+                </div>
+
+                <!-- Distribution Bars -->
+                <div class="flex-grow space-y-1.5 pt-1">
+                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                        <span class="w-2">5</span>
+                        <div class="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="bar_5" class="h-full bg-amber-400 w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                        <span class="w-2">4</span>
+                        <div class="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="bar_4" class="h-full bg-amber-400 w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                        <span class="w-2">3</span>
+                        <div class="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="bar_3" class="h-full bg-amber-400 w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                        <span class="w-2">2</span>
+                        <div class="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="bar_2" class="h-full bg-amber-400 w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] font-bold text-slate-400">
+                        <span class="w-2">1</span>
+                        <div class="flex-grow h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="bar_1" class="h-full bg-amber-400 w-0 transition-all duration-500"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="btn_review" onclick="tryOpenReview()" disabled
+                    class="h-12 border border-slate-200 rounded-xl text-xs font-black text-slate-400 flex items-center justify-center gap-2 transition-all">
+                    <i class="fas fa-pen"></i> 我要評價
+                </button>
+                <button id="btn_complain" onclick="tryOpenComplaint()" disabled
+                    class="h-12 border border-slate-200 rounded-xl text-xs font-black text-slate-400 flex items-center justify-center gap-2 transition-all">
+                    <i class="fas fa-exclamation-triangle"></i> 我要投訴
+                </button>
+            </div>
+            <p id="action_hint" class="text-[10px] text-center text-amber-500 font-bold hidden"></p>
+
+            <!-- Reviews List -->
+            <div class="space-y-6">
+                <h4 class="text-sm font-black text-slate-900 border-b border-slate-100 pb-4">學員評論</h4>
+                <div id="cd_reviews_list" class="space-y-6">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Write Review Modal -->
+<div id="writeReviewModal" class="fixed inset-0 z-[130] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeWriteReview()"></div>
+    <div class="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95">
+        <h3 class="text-xl font-black text-slate-900 mb-4">撰寫評價</h3>
+        <form id="writeReviewForm" class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">選擇課程紀錄</label>
+                <select id="review_lesson_select" name="lesson_id"
+                    class="w-full h-12 px-4 bg-slate-50 rounded-xl text-xs font-bold border-none outline-none text-slate-700">
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex gap-2 text-3xl text-slate-200 justify-center py-4" id="writeReviewStars">
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setReviewRating(1)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setReviewRating(2)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setReviewRating(3)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setReviewRating(4)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400" onclick="setReviewRating(5)"></i>
+                </div>
+                <input type="hidden" name="rating" id="reviewRatingInput" value="5">
+            </div>
+
+            <textarea name="comment" rows="3"
+                class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none"
+                placeholder="寫下您的評價..."></textarea>
+
+            <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
+                <input type="checkbox" name="is_anonymous" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                <span class="text-xs font-black text-slate-600">匿名評價</span>
+            </label>
+            <button type="submit"
+                class="w-full h-12 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-black transition-all">送出評價</button>
+        </form>
+    </div>
+</div>
+
+<!-- Simple Complaint Modal (Reused Logic) -->
+<div id="listComplaintModal" class="fixed inset-0 z-[130] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeListComplaint()"></div>
+    <div class="relative bg-white w-full max-w-md rounded-[2rem] shadow-2xl p-8 animate-in zoom-in-95">
+        <h3 class="text-xl font-black text-rose-600 mb-4">提交投訴</h3>
+        <form id="listComplaintForm" class="space-y-4">
+            <input type="hidden" name="coach_id" id="comp_coach_id">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">連結互動紀錄</label>
+                <select name="ref_id" id="comp_ref_select"
+                    class="w-full p-3 bg-slate-50 rounded-xl text-xs font-bold border-none outline-none">
+                    <!-- Populated -->
+                </select>
+            </div>
+            <textarea name="description" rows="3"
+                class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none"
+                placeholder="請描述問題..." required></textarea>
+            <button type="submit"
+                class="w-full h-12 bg-rose-600 text-white rounded-xl font-black text-xs shadow-lg">提交無法復原</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // --- Existing Filter & Quiz Scripts (Keep unchanged) ---
+    // [Truncated for brevity, assuming previous scripts persist if I don't overwrite them incorrectly]
+    // Note: The replacement instruction says "EndLine: 712", which replaces the whole block including scripts.
+    // I MUST restore the previous scripts or include the new ones properly.
+    // Since "ReplacementContent" replaces the block, I need to include the existing scripts.
+
+    // ... Copying previous script block content ...
+    const CONFIG = {
+        teaching_styles: { options: ["系統化/有計畫", "嚴格高效率", "耐心陪跑/鼓勵型", "安全保守/動作調整型"], max: 2 },
+        audiences: { options: ["新手友善", "銀髮友善", "女性友善", "親子/青少年"] },
+        venues: { options: ["1對1", "小班", "線上", "到府", "教練指定場地"] },
+        fitness: { specialties: { label: '健身目標與需求', options: ["增肌", "減脂", "體態雕塑", "體能/耐力", "動作與姿勢調整", "產後核心/骨盆底友善", "銀髮安全訓練"] } },
+        diving: { specialties: { label: '課程類型與技能', options: ["體驗/初學", "OW/AOW", "專長課程", "Fun Dive陪同/導潛", "中性浮力", "耗氣改善", "踢法/姿態", "怕水建立信心", "水下攝影引導"] } },
+        skiing: { gear_type: { label: '滑雪器材', options: ["Ski", "Snowboard", "都可以"], type: 'single' }, specialties: { label: '技能重點', options: ["新手入門", "煞車安全", "轉彎技巧", "刻滑入門", "建立信心（怕摔）", "影片回放教學"] } }
+    };
+
+    let appliedFilters = { sport: '', city: '', budget_max: '3000', sort_by: 'recommended', teaching_styles: [], audiences: [], venues: [], specialties: [], gear_type: '' };
+    let pendingFilters = null;
+    let myFavorites = new Set(); // Store favorite IDs
+
+    async function loadMyFavorites() {
+        try {
+            const res = await fetch('/api/me/favorites');
+            const data = await res.json();
+            myFavorites = new Set(data.coach_ids);
+            updateFavoriteUI();
+        } catch (e) { console.error('Failed to load favorites', e); }
+    }
+
+    function updateFavoriteUI() {
+        document.querySelectorAll('button[data-favorite-btn]').forEach(btn => {
+            const cid = parseInt(btn.dataset.favoriteBtn);
+            const icon = btn.querySelector('i');
+            if (myFavorites.has(cid)) {
+                icon.classList.remove('far', 'text-slate-400');
+                icon.classList.add('fas', 'text-rose-500');
+            } else {
+                icon.classList.remove('fas', 'text-rose-500');
+                icon.classList.add('far', 'text-slate-400');
+            }
+        });
+    }
+
+    async function toggleFavorite(e, coachId) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        // Optimistic Update
+        const isFav = myFavorites.has(coachId);
+        if (isFav) myFavorites.delete(coachId);
+        else myFavorites.add(coachId);
+        updateFavoriteUI();
+
+        try {
+            const res = await fetch('/api/me/favorites/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coach_id: coachId })
+            });
+            if (res.status === 401) {
+                alert('請先登入');
+                location.href = '/login';
+                return;
+            }
+            if (!res.ok) throw new Error('Failed');
+            // Sync with server response if needed, but optimistic is usually fine
+        } catch (err) {
+            // Rollback
+            if (isFav) myFavorites.add(coachId);
+            else myFavorites.delete(coachId);
+            updateFavoriteUI();
+            alert('操作失敗，請稍後再試');
+        }
+    }
+
+    function initFilters() {
+        loadMyFavorites();
+        const urlParams = new URL(window.location.href).searchParams;
+        appliedFilters = {
+            sport: urlParams.get('sport') || '',
+            city: urlParams.get('city') || '',
+            budget_max: urlParams.get('budget_max') || '3000',
+            sort_by: urlParams.get('sort_by') || 'recommended',
+            teaching_styles: urlParams.getAll('teaching_styles') || [],
+            audiences: urlParams.getAll('audiences') || [],
+            venues: urlParams.getAll('venues') || [],
+            specialties: urlParams.getAll('specialties') || [],
+            gear_type: urlParams.get('gear_type') || ''
+        };
+        pendingFilters = JSON.parse(JSON.stringify(appliedFilters));
+        renderUI();
+    }
+
+    function renderUI() {
+        const container = document.getElementById('quizTagsContainer');
+        const noPrompt = document.getElementById('noQuizPrompt');
+        if (!container || !noPrompt) return;
+
+        container.innerHTML = '';
+        const tags = [];
+        ['teaching_styles', 'audiences', 'venues', 'specialties'].forEach(key => {
+            (pendingFilters[key] || []).forEach(val => tags.push({ key, val }));
+        });
+        if (pendingFilters.gear_type) tags.push({ key: 'gear_type', val: pendingFilters.gear_type });
+
+        if (tags.length === 0) {
+            container.classList.add('hidden');
+            noPrompt.classList.remove('hidden');
+        } else {
+            container.classList.remove('hidden');
+            noPrompt.classList.add('hidden');
+            tags.forEach(tag => {
+                const chip = document.createElement('div');
+                chip.className = 'tag-chip group';
+                chip.innerHTML = `<span>${tag.val}</span><i class="fas fa-times text-[8px] opacity-40 group-hover:opacity-100 hover:text-rose-500 cursor-pointer transition-all" onclick="removeTag('${tag.key}', '${tag.val}')"></i>`;
+                container.appendChild(chip);
+            });
+        }
+
+        const isDirty = JSON.stringify(pendingFilters) !== JSON.stringify(appliedFilters);
+        const applyBtn = document.getElementById('applyFilterBtn');
+        const hint = document.getElementById('dirtyHint');
+        const form = document.getElementById('desktopFilterForm');
+
+        if (isDirty) {
+            applyBtn?.classList.replace('bg-slate-100', 'premium-bg');
+            applyBtn?.classList.replace('text-slate-400', 'text-white');
+            applyBtn?.classList.add('shadow-lg', 'shadow-blue-500/20', 'animate-pulse');
+            hint?.classList.replace('hidden', 'flex');
+        } else {
+            applyBtn?.classList.replace('premium-bg', 'bg-slate-100');
+            applyBtn?.classList.replace('text-white', 'text-slate-400');
+            applyBtn?.classList.remove('shadow-lg', 'shadow-blue-500/20', 'animate-pulse');
+            hint?.classList.replace('flex', 'hidden');
+        }
+
+        if (form) {
+            form.sport.value = pendingFilters.sport;
+            form.city.value = pendingFilters.city;
+            form.budget_max.value = pendingFilters.budget_max;
+            form.sort_by.value = pendingFilters.sort_by;
+            document.getElementById('budgetDisplay').innerText = `NT$ ${pendingFilters.budget_max}`;
+        }
+    }
+
+    function removeTag(k, v) {
+        if (Array.isArray(pendingFilters[k])) pendingFilters[k] = pendingFilters[k].filter(item => item !== v);
+        else pendingFilters[k] = '';
+        renderUI();
+    }
+
+    function openQuickAdjust() {
+        document.getElementById('quickAdjustModal').classList.remove('hidden');
+        const renderGroup = (id, key, current) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.innerHTML = CONFIG[key].options.map(opt => `<label class="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent cursor-pointer hover:bg-blue-50 transition-all">
+                <input type="checkbox" name="${key}" value="${opt}" ${Array.isArray(current) && current.includes(opt) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded-lg"><span class="text-xs font-bold text-slate-700">${opt}</span>
+            </label>`).join('');
+        };
+        renderGroup('qa_teaching_styles', 'teaching_styles', pendingFilters.teaching_styles);
+        renderGroup('qa_audiences', 'audiences', pendingFilters.audiences);
+        renderGroup('qa_venues', 'venues', pendingFilters.venues);
+
+        const specEl = document.getElementById('qa_sport_specific');
+        specEl.innerHTML = '';
+        const sport = pendingFilters.sport || '健身';
+        const sKey = sport === '健身' ? 'fitness' : sport === '潛水' ? 'diving' : 'skiing';
+        const sCfg = CONFIG[sKey];
+        if (sCfg) {
+            for (const [k, cfg] of Object.entries(sCfg)) {
+                const isSingle = cfg.type === 'single';
+                specEl.innerHTML += `<div class="space-y-4"><label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">${cfg.label}</label><div class="grid grid-cols-2 gap-2">
+                    ${cfg.options.map(opt => `<label class="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent cursor-pointer hover:bg-blue-50 transition-all">
+                        <input type="${isSingle ? 'radio' : 'checkbox'}" name="${k}" value="${opt}" ${(isSingle ? (pendingFilters[k] === opt) : (Array.isArray(pendingFilters.specialties) && pendingFilters.specialties.includes(opt))) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded-lg"><span class="text-xs font-bold text-slate-700">${opt}</span>
+                    </label>`).join('')}
+                </div></div>`;
+            }
+        }
+    }
+
+    function applyQuickAdjust(e) {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        pendingFilters.teaching_styles = fd.getAll('teaching_styles').slice(0, 2);
+        pendingFilters.audiences = fd.getAll('audiences');
+        pendingFilters.venues = fd.getAll('venues');
+        pendingFilters.specialties = fd.getAll('specialties');
+        pendingFilters.gear_type = fd.get('gear_type') || '';
+        closeQuickAdjust();
+        renderUI();
+    }
+
+    function closeQuickAdjust() { document.getElementById('quickAdjustModal').classList.add('hidden'); }
+
+    function handleFilterSubmit(e) {
+        e.preventDefault();
+        const f = document.getElementById('desktopFilterForm');
+        pendingFilters.sport = f.sport.value;
+        pendingFilters.city = f.city.value;
+        pendingFilters.budget_max = f.budget_max.value;
+        pendingFilters.sort_by = f.sort_by.value;
+        const p = new URLSearchParams();
+        Object.keys(pendingFilters).forEach(k => {
+            const v = pendingFilters[k];
+            if (Array.isArray(v)) v.forEach(i => p.append(k, i));
+            else if (v) p.append(k, v);
+        });
+        window.location.href = `/coaches?${p.toString()}`;
+    }
+
+    let qStep = 1;
+    let qSelectedSport = '';
+    let qAnswers = {};
+    const totalQSteps = 8;
+    const QUIZ_QUESTIONS = {
+        common: {
+            styles: { title: "偏好的教學風格？", field: "teaching_styles", type: "checkbox", options: ["系統化/有計畫", "嚴格高效率", "耐心陪跑/鼓勵型", "安全保守/動作調整型"] },
+            audiences: { title: "您的族群/需求？", field: "audiences", type: "checkbox", options: ["新手友善", "銀髮友善", "女性友善", "親子/青少年"] },
+            venues: { title: "偏好的上課型態？", field: "venues", type: "checkbox", options: ["1對1", "小班", "線上", "到府", "教練指定場地"] },
+            city: { title: "您的上課地區？", field: "city", type: "radio", options: [] } // Populated from taiwan_areas logic or fallback
+        },
+        fitness: {
+            q1: { title: "您的健身目標？", field: "specialties", type: "checkbox", options: ["增肌", "減脂", "體態雕塑", "體能/耐力", "動作與姿勢調整"] },
+            q2: { title: "特殊身體狀況？", field: "specialties", type: "checkbox", options: ["產後核心/骨盆底友善", "銀髮安全訓練", "無特定狀況"] }
+        },
+        diving: {
+            q1: { title: "想找的潛水課程？", field: "specialties", type: "checkbox", options: ["體驗/初學", "OW/AOW", "專長課程", "Fun Dive陪同/導潛"] },
+            q2: { title: "最想強化的技能？", field: "specialties", type: "checkbox", options: ["中性浮力", "耗氣改善", "踢法/姿態", "怕水建立信心", "水下攝影引導"] }
+        },
+        skiing: {
+            q1: { title: "使用的滑雪器材？", field: "gear_type", type: "radio", options: ["Ski", "Snowboard", "都可以"] },
+            q2: { title: "練習的技術重點？", field: "specialties", type: "checkbox", options: ["新手入門", "煞車安全", "轉彎技巧", "刻滑入門", "建立信心（怕摔）", "影片回放教學"] }
+        }
+    };
+
+    function openQuiz() {
+        document.getElementById('quizModal').classList.remove('hidden');
+        qStep = 1; qAnswers = {}; qSelectedSport = ''; renderQStep();
+    }
+    function closeQuiz() { document.getElementById('quizModal').classList.add('hidden'); }
+
+    function renderQStep() {
+        const body = document.getElementById('quizContent');
+        const nextBtnText = document.getElementById('nextBtnText');
+        const backBtn = document.getElementById('quizBackBtn');
+
+        if (backBtn) backBtn.style.visibility = (qStep === 1) ? 'hidden' : 'visible';
+        nextBtnText.innerText = (qStep === totalQSteps) ? '開始配對' : '下一步';
+
+        body.innerHTML = '';
+        const progress = (qStep / totalQSteps) * 100;
+        const progressHTML = `
+            <div class="mb-6">
+                <div class="flex justify-between items-end mb-1.5">
+                    <span class="text-[9px] font-black text-blue-600 uppercase tracking-widest">Step ${qStep} of ${totalQSteps}</span>
+                    <span class="text-[9px] font-black text-slate-300 uppercase">${Math.round(progress)}%</span>
+                </div>
+                <div class="w-full h-1 bg-slate-50 rounded-full overflow-hidden">
+                    <div class="h-full premium-bg transition-all duration-500" style="width: ${progress}%"></div>
+                </div>
+            </div>
+        `;
+        body.innerHTML += progressHTML;
+
+        if (qStep === 1) {
+            body.innerHTML += `<h3 class="text-lg font-black mb-6 leading-snug">您想學習哪種運動項目？</h3>
+            <div class="grid grid-cols-2 gap-3">
+                ${[
+                    { name: '健身', icon: '🏋️', color: 'from-blue-50 to-indigo-50' },
+                    { name: '潛水', icon: '🤿', color: 'from-cyan-50 to-blue-50' },
+                    { name: '滑雪', icon: '⛷️', color: 'from-slate-50 to-blue-50' }
+                ].map(s => `
+                <label class="relative flex flex-col items-center gap-3 p-6 rounded-3xl border-2 border-slate-50 hover:border-blue-600 cursor-pointer group transition-all bg-gradient-to-br ${s.color}">
+                    <input type="radio" name="sq" value="${s.name}" ${qSelectedSport === s.name ? 'checked' : ''} class="absolute top-4 right-4 w-4 h-4 text-blue-600">
+                    <span class="text-4xl mb-2 group-hover:scale-110 transition-transform">${s.icon}</span>
+                    <p class="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">${s.name}</p>
+                </label>`).join('')}
+            </div>`;
+        } else if (qStep >= 2 && qStep <= 5) {
+            const keys = ['styles', 'audiences', 'venues', 'city'];
+            const qKey = keys[qStep - 2];
+            let q = QUIZ_QUESTIONS.common[qKey];
+            if (qKey === 'city') {
+                const citySelect = document.getElementById('filterCity');
+                if (citySelect) {
+                    const cities = Array.from(citySelect.options).map(o => o.value).filter(v => v);
+                    q.options = (qSelectedSport === '健身') ? ["全地區", ...cities] : cities;
+                }
+            }
+            renderQuizOptions(body, q, qStep);
+        } else if (qStep === 6 || qStep === 7) {
+            const sKey = qSelectedSport === '健身' ? 'fitness' : qSelectedSport === '潛水' ? 'diving' : 'skiing';
+            const qKey = `q${qStep - 5}`;
+            const q = QUIZ_QUESTIONS[sKey][qKey];
+            renderQuizOptions(body, q, qStep);
+        } else {
+            const currentBudget = qAnswers[8] || 3000;
+            body.innerHTML += `
+                <h3 class="text-lg font-black mb-8 leading-snug">最後，設定您的單堂預算上限？</h3>
+                <div class="p-8 bg-blue-600/5 rounded-[2rem] text-center border border-blue-100">
+                    <p class="text-[9px] font-black text-blue-600 uppercase tracking-[0.3em] mb-2">預計單堂花費</p>
+                    <p class="text-3xl font-black text-blue-600 mb-8">NT$ <span id="qBudgetVal">${currentBudget}</span></p>
+                    <input type="range" id="qBudgetSlider" min="500" max="6000" step="100" value="${currentBudget}" 
+                        class="w-full h-1.5 bg-slate-200 rounded-full appearance-none outline-none accent-blue-600" 
+                        oninput="document.getElementById('qBudgetVal').innerText = this.value; qAnswers[8] = this.value;">
+                    <div class="flex justify-between mt-3 text-[10px] font-black text-slate-300">
+                        <span>Min NT$ 500</span><span>Max NT$ 6000</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function renderQuizOptions(container, q, step) {
+        const stored = qAnswers[step] || [];
+        container.innerHTML += `<div class="mb-6">
+            <h3 class="text-lg font-black leading-tight">${q.title}</h3>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">選填項目，可直接點選下一步</p>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            ${q.options.map(opt => `
+            <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-100 hover:bg-blue-50/50 hover:border-blue-100 cursor-pointer transition-all">
+                <input type="${q.type === 'checkbox' ? 'checkbox' : 'radio'}" name="q_opt" value="${opt}" ${stored.includes(opt) ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded">
+                <span class="text-xs font-bold text-slate-700">${opt}</span>
+            </label>`).join('')}
+        </div>`;
+    }
+
+    function prevStep() {
+        if (qStep > 1) {
+            qStep--;
+            if (qStep === 5 && (qSelectedSport === '潛水' || qSelectedSport === '滑雪')) { qStep--; }
+            renderQStep();
+        }
+    }
+
+    function nextStep() {
+        if (qStep === 1) {
+            const el = document.querySelector('input[name="sq"]:checked');
+            if (!el) return;
+            qSelectedSport = el.value;
+        } else if (qStep >= 2 && qStep <= 7) {
+            const selected = Array.from(document.querySelectorAll('input[name="q_opt"]:checked')).map(i => i.value);
+            qAnswers[qStep] = selected;
+        } else if (qStep === 8) {
+            qAnswers[qStep] = document.getElementById('qBudgetSlider').value;
+        }
+
+        if (qStep < totalQSteps) {
+            qStep++;
+            if (qStep === 5 && (qSelectedSport === '潛水' || qSelectedSport === '滑雪')) {
+                qAnswers[5] = ['']; qStep++;
+            }
+            renderQStep();
+        } else {
+            const params = new URLSearchParams();
+            params.append('sport', qSelectedSport);
+            params.append('budget_max', qAnswers[8]);
+            params.append('sort_by', 'recommended');
+            if (qAnswers[2]) qAnswers[2].forEach(v => params.append('teaching_styles', v));
+            if (qAnswers[3]) qAnswers[3].forEach(v => params.append('audiences', v));
+            if (qAnswers[4]) qAnswers[4].forEach(v => params.append('venues', v));
+            if (qAnswers[5] && qAnswers[5][0] && qAnswers[5][0] !== '全地區') params.append('city', qAnswers[5][0]);
+            const sKey = qSelectedSport === '健身' ? 'fitness' : qSelectedSport === '潛水' ? 'diving' : 'skiing';
+            if (qSelectedSport === '滑雪') {
+                if (qAnswers[6]) params.append('gear_type', qAnswers[6][0]);
+                if (qAnswers[7]) qAnswers[7].forEach(v => params.append('specialties', v));
+            } else {
+                if (qAnswers[6]) qAnswers[6].forEach(v => params.append('specialties', v));
+                if (qAnswers[7]) qAnswers[7].forEach(v => params.append('specialties', v));
+            }
+            window.location.href = `/coaches?${params.toString()}`;
+        }
+    }
+
+    window.addEventListener('load', initFilters);
+    document.addEventListener('change', (e) => {
+        if (['sport', 'city', 'budget_max', 'sort_by'].includes(e.target.name)) {
+            pendingFilters[e.target.name] = e.target.value;
+            renderUI();
+        }
+    });
+
+    // --- NEW: Coach Details Modal Logic ---
+    let currentCoachId = null;
+    let eligibilityData = null;
+
+    async function openCoachReviews(coachId, name, avatar, sport) {
+        currentCoachId = coachId;
+        const modal = document.getElementById('coachDetailsModal');
+
+        // Setup Header
+        document.getElementById('cd_name').innerText = name;
+        document.getElementById('cd_avatar').src = avatar;
+        document.getElementById('cd_sport').innerText = sport || '專業教練';
+
+        // Sync Favorite Button
+        const favBtn = document.getElementById('cd_fav_btn');
+        if (favBtn) {
+            favBtn.dataset.favoriteBtn = coachId;
+            updateFavoriteUI();
+        }
+
+        // Reset State
+        document.getElementById('cd_avg_rating').innerText = '...';
+        document.getElementById('cd_rating_count').innerText = '載入中...';
+        document.getElementById('cd_reviews_list').innerHTML = '<div class="text-center py-10 text-slate-300">載入中...</div>';
+        ['btn_review', 'btn_complain'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.classList.remove('text-blue-600', 'text-rose-600', 'border-blue-200', 'border-rose-200', 'bg-blue-50', 'bg-rose-50');
+        });
+        document.getElementById('action_hint').classList.add('hidden');
+
+        modal.classList.remove('hidden');
+
+        try {
+            // Parallel Fetch: Reviews + Eligibility
+            const [revRes, eligRes] = await Promise.all([
+                fetch(`/api/coaches/${coachId}/reviews`),
+                fetch(`/api/coaches/${coachId}/interaction-eligibility`)
+            ]);
+
+            const reviews = await revRes.json();
+            eligibilityData = await eligRes.json();
+
+            // Render Stats
+            document.getElementById('cd_avg_rating').innerText = reviews.avg_rating;
+            document.getElementById('cd_rating_count').innerText = `${reviews.rating_count} 則評價`;
+
+            const total = reviews.rating_count || 1;
+            for (let i = 1; i <= 5; i++) {
+                const pct = ((reviews.distribution[i] || 0) / total) * 100;
+                document.getElementById(`bar_${i}`).style.width = `${pct}%`;
+            }
+
+            // Render List
+            const listEl = document.getElementById('cd_reviews_list');
+            if (reviews.reviews.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-100">
+                    <p class="text-xs font-bold text-slate-400">目前還沒有評價，成為第一個評價的人！</p>
+                </div>`;
+            } else {
+                listEl.innerHTML = reviews.reviews.map(r => `
+                    <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black text-slate-900">${r.is_anonymous ? '匿名學員' : r.student_name}</span>
+                                <div class="flex text-[10px] text-amber-400 gap-0.5">
+                                    ${Array(Math.round(r.rating)).fill(0).map(() => '<i class="fas fa-star"></i>').join('')}
+                                </div>
+                            </div>
+                            <span class="text-[9px] font-bold text-slate-300 self-start sm:self-auto">${r.date || ''}</span>
+                        </div>
+                        <p class="text-sm font-medium text-slate-600 leading-relaxed tracking-wide text-justify">${r.comment || '此用戶未填寫評論'}</p>
+                    </div>
+                `).join('');
+            }
+
+            // Update Buttons
+            updateActionButton('btn_review', eligibilityData.can_review, 'text-blue-600', 'border-blue-200', 'bg-blue-50');
+            updateActionButton('btn_complain', eligibilityData.can_complain, 'text-rose-600', 'border-rose-200', 'bg-rose-50');
+
+            if (!eligibilityData.can_review && !eligibilityData.can_complain) {
+                const hint = document.getElementById('action_hint');
+                hint.innerText = eligibilityData.review_reason || eligibilityData.complaint_reason;
+                hint.classList.remove('hidden');
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert('載入失敗');
+        }
+    }
+
+    function updateActionButton(id, enabled, textClass, borderClass, bgClass) {
+        const btn = document.getElementById(id);
+        if (enabled) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'text-slate-400');
+            btn.classList.add(textClass, borderClass, bgClass, 'hover:scale-105', 'shadow-sm');
+        }
+    }
+
+    function closeCoachDetails() {
+        document.getElementById('coachDetailsModal').classList.add('hidden');
+    }
+
+    function tryOpenReview() {
+        if (!eligibilityData?.can_review) return;
+
+        const modal = document.getElementById('writeReviewModal');
+        const select = document.getElementById('review_lesson_select');
+        select.innerHTML = '';
+
+        eligibilityData.review_booking_ids.forEach(id => {
+            select.innerHTML += `<option value="${id}">課程紀錄 #${id}</option>`;
+        });
+
+        // Reset form
+        document.getElementById('writeReviewForm').reset();
+        setReviewRating(5);
+        modal.classList.remove('hidden');
+    }
+
+    function closeWriteReview() {
+        document.getElementById('writeReviewModal').classList.add('hidden');
+    }
+
+    function setReviewRating(r) {
+        document.getElementById('reviewRatingInput').value = r;
+        const stars = document.getElementById('writeReviewStars').children;
+        for (let i = 0; i < 5; i++) {
+            if (i < r) stars[i].classList.add('text-amber-400', 'fas');
+            else stars[i].classList.remove('text-amber-400', 'fas');
+            if (i >= r) stars[i].classList.add('far', 'text-slate-200');
+            else stars[i].classList.remove('far', 'text-slate-200'); // Ensure filled style
+        }
+    }
+
+    document.getElementById('writeReviewForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            lesson_id: parseInt(e.target.lesson_id.value),
+            rating: parseInt(e.target.rating.value),
+            comment: e.target.comment.value,
+            is_anonymous: e.target.is_anonymous.checked
+        };
+
+        try {
+            const res = await fetch(`/api/coaches/${currentCoachId}/reviews`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                alert('評價已提交！');
+                closeWriteReview();
+                // Refresh reviews
+                openCoachReviews(currentCoachId, document.getElementById('cd_name').innerText, document.getElementById('cd_avatar').src, document.getElementById('cd_sport').innerText);
+            } else {
+                const err = await res.json();
+                alert('提交失敗: ' + err.detail);
+            }
+        } catch (e) { alert('系統錯誤'); }
+    };
+
+    function tryOpenComplaint() {
+        if (!eligibilityData?.can_complain) return;
+
+        const modal = document.getElementById('listComplaintModal');
+        const select = document.getElementById('comp_ref_select');
+        document.getElementById('comp_coach_id').value = currentCoachId; // Keep for compatibility but we use URL too
+
+        select.innerHTML = '';
+        eligibilityData.complaint_booking_ids.forEach(id => {
+            select.innerHTML += `<option value="lesson:${id}">課程紀錄 #${id}</option>`;
+        });
+        eligibilityData.complaint_thread_ids.forEach(id => {
+            select.innerHTML += `<option value="thread:${id}">諮詢對話 #${id}</option>`;
+        });
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeListComplaint() {
+        document.getElementById('listComplaintModal').classList.add('hidden');
+    }
+
+    document.getElementById('listComplaintForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const refVal = e.target.ref_id.value;
+        const [type, id] = refVal.split(':');
+
+        const data = {
+            coach_id: parseInt(currentCoachId),
+            category: 'other',
+            description: e.target.description.value,
+            is_anonymous: false
+        };
+        if (type === 'lesson') data.lesson_id = parseInt(id);
+        else data.thread_id = parseInt(id);
+
+        try {
+            const res = await fetch(`/api/coaches/${currentCoachId}/complaints`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                alert('投訴已提交，平台將介入調查。');
+                closeListComplaint();
+                closeCoachDetails(); // Close parent modal
+            } else {
+                const err = await res.json();
+                alert('提交失敗: ' + err.detail);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('系統錯誤');
+        }
+    };
+</script>
+{% endblock %}

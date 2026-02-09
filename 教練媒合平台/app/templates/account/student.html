@@ -1,0 +1,295 @@
+{% extends "layout.html" %}
+{% from "macros/avatar.html" import render_avatar %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-2">
+    <!-- Dashboard Top: Profile Card -->
+    <div
+        class="mb-6 p-6 md:p-8 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-6 md:gap-8 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-blue-50/30 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+        <div class="relative">
+            {{ render_avatar(user.avatar_url, user.name, None, 'lg') }}
+        </div>
+
+        <div class="flex-grow text-center md:text-left">
+            <h1 class="text-2xl font-black text-slate-900 mb-1">{{ user.name or user.email.split('@')[0] }}</h1>
+            <p class="text-[11px] text-slate-400 font-bold mb-4 tracking-wider">{{ user.email }}</p>
+            <div class="flex flex-wrap justify-center md:justify-start gap-2">
+                <span
+                    class="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-widest">一般學員</span>
+                <span
+                    class="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase tracking-widest">加入於
+                    {{ user.created_at.strftime('%Y/%m') }}</span>
+            </div>
+        </div>
+
+        <div class="shrink-0">
+            <button onclick="openEditModal()"
+                class="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-200 hover:scale-105 active:scale-95 transition-all">
+                編輯個人資料
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard Middle: Quick Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div
+            class="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm group hover:border-blue-200 transition-all">
+            <div
+                class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
+                <i class="fas fa-search"></i>
+            </div>
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">尋找合適教練</h3>
+            <p class="text-base font-black text-slate-900 mb-4">探索 100+ 位教練</p>
+            <button onclick="window.location.href='/coaches'"
+                class="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] flex items-center gap-1.5 hover:gap-3 transition-all">
+                立即出發 <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <div
+            class="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm group hover:border-rose-200 transition-all">
+            <div
+                class="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mb-4 group-hover:scale-110 transition-transform">
+                <i class="fas fa-heart"></i>
+            </div>
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">我的收藏清單</h3>
+            <p class="text-base font-black text-slate-900 mb-4"><span id="favCountDisplay">...</span> 位收藏</p>
+            <button onclick="window.location.href='/account/student/favorites'"
+                class="text-[9px] font-black text-rose-500 uppercase tracking-[0.2em] flex items-center gap-1.5 hover:gap-3 transition-all">
+                管理清單 <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <div
+            class="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm group hover:border-emerald-200 transition-all">
+            <div
+                class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 mb-4 group-hover:scale-110 transition-transform">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">我的課程</h3>
+            <p class="text-base font-black text-slate-900 mb-4">管理預約課程</p>
+            <button onclick="window.location.href='/account/student/lessons'"
+                class="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em] flex items-center gap-1.5 hover:gap-3 transition-all">
+                進入課程中心 <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard Bottom: Recent Consultations -->
+    <div class="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg font-black text-slate-900">最近諮詢對話</h2>
+            <a href="/messages"
+                class="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">查看全部</a>
+        </div>
+
+        {% if threads %}
+        <div class="grid grid-cols-1 gap-3">
+            {% for thread in threads[:3] %}
+            <a href="/messages/{{ thread.id }}"
+                class="flex items-center gap-4 p-4 rounded-2xl border border-slate-50 hover:bg-slate-50 hover:border-slate-100 transition-all group">
+                {{ render_avatar(thread.partner_avatar, thread.partner_name, thread.partner_sport_type, 'md') }}
+                <div class="flex-grow min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <h4 class="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{{
+                            thread.partner_name }}</h4>
+                        <span class="text-[9px] font-bold text-slate-300">{{ thread.updated_at.strftime('%m/%d %H:%M')
+                            }}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 truncate pr-6 font-medium">{{ thread.last_message or '尚未有訊息' }}
+                    </p>
+                </div>
+                <div
+                    class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-slate-200 group-hover:text-blue-500 group-hover:shadow-sm transition-all shadow-sm">
+                    <i class="fas fa-chevron-right text-[9px]"></i>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-10 bg-slate-50/50 rounded-[2rem] text-center border border-dashed border-slate-100">
+            <p class="text-xs text-slate-400 font-bold mb-4">您尚未進行過諮詢</p>
+            <a href="/coaches"
+                class="inline-flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-lg text-[10px] font-black shadow-lg">
+                去逛逛教練名單
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Complaint Trigger (Generic) -->
+<div class="text-center mt-12 mb-6">
+    <button onclick="openComplaintModal()"
+        class="text-xs text-slate-400 font-bold hover:text-rose-500 transition-colors">
+        <i class="fas fa-exclamation-circle mr-1"></i> 遇到問題？提交投訴
+    </button>
+</div>
+
+</div>
+
+<!-- Review Modal -->
+<div id="reviewModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeReviewModal()"></div>
+    <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 transition-all scale-95 opacity-0"
+        id="reviewContent">
+        <h3 class="text-xl font-black text-slate-900 mb-6">課程評價</h3>
+        <form id="reviewForm" class="space-y-4">
+            <input type="hidden" name="lesson_id" id="reviewLessonId">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">評分 (1-5)</label>
+                <div class="flex gap-2 text-2xl text-slate-300" id="starContainer">
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(1)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(2)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(3)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(4)"></i>
+                    <i class="fas fa-star cursor-pointer hover:text-amber-400 transition-colors"
+                        onclick="setRating(5)"></i>
+                </div>
+                <input type="hidden" name="rating" id="reviewRating" value="5">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">評論內容</label>
+                <textarea name="comment" rows="3"
+                    class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-blue-100 outline-none"
+                    placeholder="寫下您的心得..."></textarea>
+            </div>
+
+            <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
+                <input type="checkbox" name="is_anonymous" class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500">
+                <span class="text-xs font-black text-slate-600">匿名評價</span>
+            </label>
+
+            <button type="submit"
+                class="w-full h-12 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-black transition-all">送出評價</button>
+        </form>
+    </div>
+</div>
+
+<!-- Complaint Modal -->
+<div id="complaintModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onclick="closeComplaintModal()"></div>
+    <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl p-8 border border-slate-100 transition-all scale-95 opacity-0"
+        id="complaintContent">
+        <h3 class="text-xl font-black text-rose-600 mb-6">提交投訴</h3>
+        <p class="text-xs text-slate-500 font-bold mb-4 bg-rose-50 p-3 rounded-xl">
+            <i class="fas fa-info-circle mr-1"></i> 請詳細描述遇到的問題，我們將於 24 小時內處理。
+        </p>
+        <form id="complaintForm" class="space-y-4">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">教練 ID</label>
+                <input type="number" name="coach_id"
+                    class="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-none outline-none"
+                    placeholder="輸入教練 ID (若有)" required>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">投訴類型</label>
+                <select name="category"
+                    class="w-full p-3 bg-slate-50 rounded-xl text-sm font-bold border-none outline-none">
+                    <option value="quality">課程品質不佳</option>
+                    <option value="no_show">教練未出席</option>
+                    <option value="harassment">騷擾或不當行為</option>
+                    <option value="other">其他</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">詳細說明</label>
+                <textarea name="description" rows="4"
+                    class="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none focus:ring-2 focus:ring-rose-100 outline-none"
+                    placeholder="請描述發生什麼事..." required></textarea>
+            </div>
+
+            <label class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer">
+                <input type="checkbox" name="is_anonymous" class="w-4 h-4 text-rose-600 rounded focus:ring-rose-500">
+                <span class="text-xs font-black text-slate-600">匿名投訴</span>
+            </label>
+
+            <button type="submit"
+                class="w-full h-12 bg-rose-600 text-white rounded-2xl font-black text-xs shadow-lg hover:bg-rose-700 transition-all">提交審核</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Edit Modal Logic (Existing)
+    function openEditModal() { const m = document.getElementById('editProfileModal'), c = document.getElementById('modalContent'); m.classList.remove('hidden'); setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10); }
+    function closeEditModal() { const m = document.getElementById('editProfileModal'), c = document.getElementById('modalContent'); c.classList.add('scale-95', 'opacity-0'); c.classList.remove('scale-100', 'opacity-100'); setTimeout(() => m.classList.add('hidden'), 300); }
+
+    // Init Favorites Count
+    (async function initFavCount() {
+        try {
+            const res = await fetch('/api/me/favorites');
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('favCountDisplay').innerText = data.coach_ids.length;
+            }
+        } catch (e) {
+            document.getElementById('favCountDisplay').innerText = '0';
+        }
+    })();
+
+    // Review Modal
+    function openReviewModal(lid) {
+        document.getElementById('reviewLessonId').value = lid;
+        const m = document.getElementById('reviewModal'), c = document.getElementById('reviewContent');
+        m.classList.remove('hidden'); setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10);
+        setRating(5); // Reset
+    }
+    function closeReviewModal() {
+        const m = document.getElementById('reviewModal'), c = document.getElementById('reviewContent');
+        c.classList.add('scale-95', 'opacity-0'); c.classList.remove('scale-100', 'opacity-100'); setTimeout(() => m.classList.add('hidden'), 300);
+    }
+
+    function setRating(n) {
+        document.getElementById('reviewRating').value = n;
+        const stars = document.getElementById('starContainer').children;
+        for (let i = 0; i < 5; i++) {
+            stars[i].classList.toggle('text-amber-400', i < n);
+            stars[i].classList.toggle('text-slate-300', i >= n);
+        }
+    }
+
+    document.getElementById('reviewForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            lesson_id: document.getElementById('reviewLessonId').value,
+            rating: document.getElementById('reviewRating').value,
+            comment: e.target.comment.value,
+            is_anonymous: e.target.is_anonymous.checked
+        };
+        const res = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (res.ok) { alert('評價已送出！'); location.reload(); } else { alert('送出失敗'); }
+    };
+
+    // Complaint Modal
+    function openComplaintModal() {
+        const m = document.getElementById('complaintModal'), c = document.getElementById('complaintContent');
+        m.classList.remove('hidden'); setTimeout(() => { c.classList.remove('scale-95', 'opacity-0'); c.classList.add('scale-100', 'opacity-100'); }, 10);
+    }
+    function closeComplaintModal() {
+        const m = document.getElementById('complaintModal'), c = document.getElementById('complaintContent');
+        c.classList.add('scale-95', 'opacity-0'); c.classList.remove('scale-100', 'opacity-100'); setTimeout(() => m.classList.add('hidden'), 300);
+    }
+
+    document.getElementById('complaintForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const data = {
+            coach_id: e.target.coach_id.value,
+            category: e.target.category.value,
+            description: e.target.description.value,
+            is_anonymous: e.target.is_anonymous.checked
+        };
+        const res = await fetch('/api/complaints', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (res.ok) { alert('投訴已提交，我們將儘速處理。'); closeComplaintModal(); } else { alert('提交失敗'); }
+    };
+</script>
+{% endblock %}

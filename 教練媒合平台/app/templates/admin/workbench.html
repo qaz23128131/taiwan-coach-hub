@@ -1,0 +1,182 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto pb-20">
+    <!-- Welcome Header -->
+    <div class="mb-12">
+        <h1 class="text-4xl font-black text-slate-900 mb-2">管理員工作台 <span class="text-blue-600">Admin Workbench</span>
+        </h1>
+        <p class="text-slate-500 font-bold">歡迎回來，系統目前運行良好。以下是您的今日待辦事項與數據概覽。</p>
+    </div>
+
+    <!-- Main Navigation Cards (Glass Cards) -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-12">
+        <!-- Coach Review Card -->
+        <div
+            class="glass-card group hover:-translate-y-2 transition-all duration-500 p-8 rounded-[3rem] border border-white bg-white/40 backdrop-blur-xl shadow-2xl shadow-slate-200/50">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center text-purple-600">
+                    <i class="fas fa-user-check text-2xl"></i>
+                </div>
+                <span
+                    class="px-4 py-1.5 bg-purple-500 text-white text-[10px] font-black rounded-full shadow-lg shadow-purple-200">
+                    待審核：{{ pending_count }}
+                </span>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">教練資歷審核</h3>
+            <p class="text-slate-400 text-sm font-bold mb-8 leading-relaxed">審核教練提交的專業證照、教學經歷與個人簡介。</p>
+            <a href="/admin/coaches"
+                class="w-full btn-base bg-purple-600 text-white rounded-2xl shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 transition-all font-black text-sm">
+                前往審核中心 <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </a>
+        </div>
+
+        <!-- Coach Directory Card -->
+        <div
+            class="glass-card group hover:-translate-y-2 transition-all duration-500 p-8 rounded-[3rem] border border-white bg-white/40 backdrop-blur-xl shadow-2xl shadow-slate-200/50">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600">
+                    <i class="fas fa-address-book text-2xl"></i>
+                </div>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">教練資源圖譜</h3>
+            <p class="text-slate-400 text-sm font-bold mb-8 leading-relaxed">查看已上架教練的運動分佈、服務等級與運營數據。</p>
+            <a href="/admin/coaches/directory"
+                class="w-full btn-base bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-all font-black text-sm">
+                查看資源圖譜 <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </a>
+        </div>
+
+        <!-- Case Center Card -->
+        <div
+            class="glass-card group hover:-translate-y-2 transition-all duration-500 p-8 rounded-[3rem] border border-white bg-white/40 backdrop-blur-xl shadow-2xl shadow-slate-200/50">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-14 h-14 bg-rose-100 rounded-2xl flex items-center justify-center text-rose-600">
+                    <i class="fas fa-gavel text-2xl"></i>
+                </div>
+                <span
+                    class="px-4 py-1.5 bg-rose-500 text-white text-[10px] font-black rounded-full shadow-lg shadow-rose-200">
+                    待處理：{{ case_count }}
+                </span>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">案件異常管理</h3>
+            <p class="text-slate-400 text-sm font-bold mb-8 leading-relaxed">處理學員投訴、低評分停權案件與安全環境維護。</p>
+            <a href="/admin/cases"
+                class="w-full btn-base bg-rose-600 text-white rounded-2xl shadow-lg shadow-rose-500/20 hover:shadow-rose-500/40 transition-all font-black text-sm">
+                前往案件中心 <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </a>
+        </div>
+
+        <!-- Support Center Card -->
+        <div
+            class="glass-card group hover:-translate-y-2 transition-all duration-500 p-8 rounded-[3rem] border border-white bg-white/40 backdrop-blur-xl shadow-2xl shadow-slate-200/50">
+            <div class="flex justify-between items-start mb-6">
+                <div class="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
+                    <i class="fas fa-comments text-2xl"></i>
+                </div>
+                <span
+                    class="px-4 py-1.5 bg-amber-500 text-white text-[10px] font-black rounded-full shadow-lg shadow-amber-200">
+                    未讀訊息：{{ unread_msg_count }}
+                </span>
+            </div>
+            <h3 class="text-2xl font-black text-slate-900 mb-2">訊息中心</h3>
+            <p class="text-slate-400 text-sm font-bold mb-8 leading-relaxed">管理教練與學員的客服訊息與申訴溝通。</p>
+            <a href="/admin/messages"
+                class="w-full btn-base bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition-all font-black text-sm">
+                前往訊息中心 <i class="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Section -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">本週新增教練</div>
+            <div class="text-3xl font-black text-slate-900">{{ new_coaches }} <span
+                    class="text-xs text-emerald-500 ml-1"><i class="fas fa-caret-up"></i></span></div>
+        </div>
+        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">平台審核通過率</div>
+            <div class="text-3xl font-black text-slate-900">{{ approval_rate }}%</div>
+        </div>
+        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">本週異常觸發</div>
+            <div class="text-3xl font-black text-slate-900">{{ violations }}</div>
+        </div>
+        <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">平均審核耗時</div>
+            <div class="text-3xl font-black text-slate-900">1.2h</div>
+        </div>
+    </div>
+
+    <!-- Recent Todos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Pending Coaches -->
+        <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-8 py-6 border-b border-slate-50 flex justify-between items-center">
+                <h4 class="font-black text-slate-900 text-sm">最新待審核教練</h4>
+                <a href="/admin/coaches" class="text-[11px] font-bold text-blue-600 hover:underline">查看全部</a>
+            </div>
+            <div class="divide-y divide-slate-50">
+                {% for coach in pending_coaches %}
+                <div class="px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition cursor-pointer"
+                    onclick="location.href='/admin/coaches/{{ coach.id }}/preview'">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 overflow-hidden shrink-0">
+                            <img src="https://api.dicebear.com/7.x/adventurer/svg?seed={{ coach.display_name }}&backgroundColor=b6e3f4"
+                                class="w-full h-full object-contain">
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">{{ coach.display_name }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold uppercase">{{
+                                coach.submitted_at.strftime('%m-%d %H:%M') if coach.submitted_at else 'N/A' }}</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-200 text-xs"></i>
+                </div>
+                {% else %}
+                <div class="py-12 text-center text-slate-300 italic text-xs font-bold">目前沒有待審核項</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Cases -->
+        <div class="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-8 py-6 border-b border-slate-50 flex justify-between items-center">
+                <h4 class="font-black text-slate-900 text-sm">最新異常案件</h4>
+                <a href="/admin/cases" class="text-[11px] font-bold text-rose-600 hover:underline">查看全部</a>
+            </div>
+            <div class="divide-y divide-slate-50">
+                {% for item in open_cases %}
+                <div class="px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition cursor-pointer"
+                    onclick="location.href='/admin/cases'">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-400 shrink-0">
+                            <i class="fas fa-exclamation-triangle text-sm"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-black text-slate-900">{{ item.case.case_type }} - {{
+                                item.coach_name }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold uppercase">優先級：{{ item.case.priority }}
+                            </div>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-slate-200 text-xs"></i>
+                </div>
+                {% else %}
+                <div class="py-12 text-center text-slate-300 italic text-xs font-bold">目前沒有未處理案件</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+</style>
+{% endblock %}

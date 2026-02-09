@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+{% from "macros/avatar.html" import render_avatar %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-10 px-4">
+    <!-- Header with Back Button -->
+    <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+            <a href="{{ '/account/coach' if current_role == 'coach' else '/account/student' }}"
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors mb-2 block">
+                <i class="fas fa-arrow-left mr-1"></i> 返回個人中心
+            </a>
+            <h1 class="text-4xl font-black text-slate-900">訊息中心</h1>
+        </div>
+
+        <!-- Role Switching Tabs -->
+        <div class="flex gap-1 p-1 bg-slate-100 rounded-2xl w-fit">
+            <a href="/messages?role_filter=student"
+                class="px-6 py-2.5 rounded-xl text-xs font-black transition-all {% if current_role == 'student' %} bg-white text-blue-600 shadow-sm {% else %} text-slate-400 hover:text-slate-600 {% endif %}">
+                學員專區
+            </a>
+            {% if is_coach %}
+            <a href="/messages?role_filter=coach"
+                class="px-6 py-2.5 rounded-xl text-xs font-black transition-all {% if current_role == 'coach' %} bg-white text-indigo-600 shadow-sm {% else %} text-slate-400 hover:text-slate-600 {% endif %}">
+                教練專區
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Compact Thread List -->
+    <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        {% if threads %}
+        <div class="divide-y divide-slate-50">
+            {% for thread in threads %}
+            <a href="{{ '/messages/support/' ~ thread.id if thread.type == 'admin' else '/messages/' ~ thread.id }}"
+                class="flex items-center gap-5 p-6 hover:bg-slate-50 transition-all group">
+                {% if thread.type == 'admin' %}
+                <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-md">
+                    <i class="fas fa-shield-alt text-lg"></i>
+                </div>
+                {% else %}
+                {{ render_avatar(thread.partner_avatar, thread.partner_name, thread.partner_sport_type, 'md') }}
+                {% endif %}
+                <div class="flex-grow min-w-0">
+                    <div class="flex items-center justify-between mb-0.5">
+                        <h3 class="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{{
+                            thread.partner_name }}</h3>
+                        <span class="text-[9px] font-bold text-slate-300">{{ thread.updated_at.strftime('%m/%d %H:%M')
+                            }}</span>
+                    </div>
+                    <p class="text-xs text-slate-400 truncate font-medium pr-8">
+                        {{ thread.last_message or '尚未有訊息' }}
+                    </p>
+                </div>
+                <i
+                    class="fas fa-chevron-right text-[10px] text-slate-200 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"></i>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-20 text-center">
+            <div
+                class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+                <i class="fas fa-comments text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-black text-slate-800 mb-1">目前尚無訊息</h3>
+            <p class="text-xs text-slate-400 font-bold mb-6">
+                {% if current_role == 'coach' %}
+                目前還沒有學員發起諮詢。
+                {% else %}
+                開始探索教練並發送諮詢，即會在此出現對話。
+                {% endif %}
+            </p>
+            {% if current_role == 'student' %}
+            <a href="/coaches"
+                class="inline-flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black shadow-lg hover:bg-blue-600 transition-all">
+                去逛逛教練清單
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

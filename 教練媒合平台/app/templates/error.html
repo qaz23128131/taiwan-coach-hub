@@ -1,0 +1,18 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-32 flex flex-col items-center text-center">
+    <div
+        class="w-24 h-24 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-8 border border-rose-100">
+        <i class="fas fa-lock text-3xl"></i>
+    </div>
+    <h1 class="text-4xl font-black text-slate-900 mb-4">存取受限</h1>
+    <p class="text-slate-400 text-lg max-w-md mb-12 font-medium">
+        {{ message or "您目前無法查看此教練的檔案，可能該檔案尚未公開、正在審核中或已由管理員暫時下架。" }}
+    </p>
+    <div class="flex gap-4">
+        <a href="/coaches" class="btn-base btn-premium !px-12">回到教練名單</a>
+        <a href="/" class="btn-base btn-secondary !px-12">回首頁</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,563 @@
+{% extends "layout.html" %}
+{% from "macros/avatar.html" import render_avatar %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 px-4 pb-20">
+    <div class="mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+            <a href="/account/coach"
+                class="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 transition-colors mb-2 block">
+                <i class="fas fa-arrow-left mr-1"></i> 返回教練中心
+            </a>
+            <h1 class="text-4xl font-black text-slate-900">編輯個人檔案</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="/account/coach/showcase"
+                class="h-12 px-6 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-blue-100 transition-all">
+                <i class="fas fa-magic"></i> 編輯展示頁與作品
+            </a>
+            <a href="/coaches/{{ coach.id }}" target="_blank"
+                class="h-12 px-6 bg-white text-slate-600 border border-slate-200 rounded-xl font-black text-xs flex items-center justify-center gap-2 hover:bg-slate-50 transition-all">
+                <i class="fas fa-eye"></i> 預覽公開頁
+            </a>
+            <button type="submit" form="profileForm" id="submitBtnTop"
+                class="h-12 px-10 premium-bg text-white rounded-xl font-black text-xs shadow-xl shadow-blue-500/20 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed transition-all"
+                {% if coach.status=='PENDING_REVIEW' %}disabled{% endif %}>
+                {% if coach.status == 'PENDING_REVIEW' %}審核處理中...{% else %}提交並更新檔案{% endif %}
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Banner -->
+    {% if coach.status == 'PENDING' %}
+    <div class="bg-amber-50 border border-amber-100 p-6 rounded-3xl mb-8 flex items-center gap-4">
+        <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 shrink-0">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div>
+            <p class="text-sm font-black text-amber-900">資料正在人工審核中（已暫時下架）</p>
+            <p class="text-xs font-bold text-amber-700/70">管理員正在核對您的最新修改。審核通過後，您的教練頁面將重新上架並更新內容。</p>
+        </div>
+    </div>
+    {% elif coach.status == 'REJECTED' %}
+    <div class="bg-rose-50 border border-rose-100 p-6 rounded-3xl mb-8 flex items-center gap-4">
+        <div class="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 shrink-0">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="flex-grow">
+            <p class="text-sm font-black text-rose-900">審核未通過：請根據建議修改</p>
+            <p class="text-xs font-bold text-rose-700/70">退回原因：{{ coach.reject_reason }}</p>
+        </div>
+        <p class="text-[10px] font-black text-rose-400 uppercase tracking-widest">修正後可再次提交</p>
+    </div>
+    {% elif coach.status == 'APPROVED' %}
+    <div class="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl mb-8 flex items-center gap-4">
+        <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 shrink-0">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div>
+            <p class="text-sm font-black text-emerald-900">目前的檔案已核准並公開上架</p>
+            <p class="text-xs font-bold text-emerald-700/70">若有修改，送出後資料會先暫時下架進行審核，通過後才會重新上架。</p>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if request.query_params.get('success') %}
+    <div
+        class="bg-blue-600 text-white p-6 rounded-2xl font-bold flex items-center gap-3 mb-8 animate-in slide-in-from-top duration-500">
+        <i class="fas fa-check-circle"></i> {{ request.query_params.get('success') }}
+    </div>
+    {% endif %}
+
+    <div class="max-w-4xl mx-auto space-y-12">
+        <!-- Main Form Content -->
+        <div class="space-y-12">
+            <form id="profileForm" action="/account/coach/profile" method="POST" class="space-y-12">
+                <!-- Core Profile Section -->
+                <section id="section-core"
+                    class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-10">
+                    <h3 class="text-2xl font-black text-slate-900 flex items-center gap-3">
+                        <span class="w-2 h-8 bg-blue-600 rounded-full"></span>
+                        基礎呈現設定
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">公開顯示名稱</label>
+                            <input type="text" name="display_name" value="{{ coach.display_name }}" required
+                                class="w-full h-16 px-6 bg-slate-50 rounded-2xl border-none font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition">
+                        </div>
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">主修運動
+                                (可複選)</label>
+                            <div class="flex flex-wrap gap-2">
+                                {% set active_sports = coach.sports | from_json %}
+                                {% for s in ['健身', '潛水', '滑雪'] %}
+                                <label class="cursor-pointer">
+                                    <input type="checkbox" name="sports_list" value="{{ s }}" class="hidden peer" {% if
+                                        s in active_sports %}checked{% endif %} onchange="updateSportFields()">
+                                    <div
+                                        class="px-6 py-4 rounded-xl border border-slate-200 bg-white text-xs font-black text-slate-400 peer-checked:border-blue-600 peer-checked:text-blue-600 peer-checked:bg-blue-50 transition-all">
+                                        {{ s }}
+                                    </div>
+                                </label>
+                                {% endfor %}
+                                <input type="hidden" name="sports_text" id="sports_text"
+                                    value="{{ active_sports|join(',') }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-3">
+                            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">最低收費
+                                (NT$ / 堂)</label>
+                            <input type="number" name="price_min" value="{{ coach.price_min }}" required
+                                class="w-full h-16 px-6 bg-slate-50 rounded-2xl border-none font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition">
+                        </div>
+                        <div class="space-y-3">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">服務地區範圍</label>
+                            <div class="flex items-center gap-3 p-5 bg-blue-50/50 rounded-2xl border border-blue-100 cursor-pointer"
+                                onclick="toggleAllAreas()">
+                                <input type="checkbox" name="service_all_areas" id="service_all_areas" value="1"
+                                    class="w-5 h-5 text-blue-600 rounded-lg" {% if coach.service_all_areas %}checked{%
+                                    endif %}>
+                                <div>
+                                    <span class="text-sm font-black text-blue-900 block">服務全台灣地區</span>
+                                    <span
+                                        class="text-[10px] font-bold text-blue-600 opacity-60">勾選後將顯示於所有城市的搜尋結果中</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Compact Region Selector (Dropdowns) -->
+                    <div id="region-selector-block"
+                        class="space-y-6 pt-4 {% if coach.service_all_areas %}hidden{% endif %}">
+                        <label
+                            class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">指定服務縣市與行政區</label>
+
+                        <div
+                            class="flex flex-col md:flex-row gap-4 items-end bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                            <div class="flex-grow space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 ml-2">選擇縣市</label>
+                                <select id="city-selector" onchange="updateDistrictOptions()"
+                                    class="w-full h-14 px-6 bg-white rounded-2xl border-none font-bold text-slate-700 outline-none shadow-sm">
+                                    <option value="">選擇縣市</option>
+                                    {% for city in taiwan_areas.keys() %}
+                                    <option value="{{ city }}">{{ city }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="flex-grow space-y-2">
+                                <label class="text-[10px] font-bold text-slate-400 ml-2">選擇行政區</label>
+                                <select id="district-selector"
+                                    class="w-full h-14 px-6 bg-white rounded-2xl border-none font-bold text-slate-700 outline-none shadow-sm">
+                                    <option value="">請先選擇縣市</option>
+                                </select>
+                            </div>
+                            <button type="button" onclick="addRegion()"
+                                class="h-14 px-10 bg-blue-600 text-white rounded-2xl font-black text-xs hover:bg-blue-700 transition-all shadow-lg active:scale-95">
+                                <i class="fas fa-plus mr-2"></i>新增地區
+                            </button>
+                        </div>
+
+                        <div class="space-y-3">
+                            <label
+                                class="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-2">已選定的服務地區</label>
+                            <div id="selected-regions-chips"
+                                class="flex flex-wrap gap-2 min-h-[60px] p-4 bg-white/50 rounded-2xl border border-dashed border-slate-200">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Hidden storage for backend cities/regions -->
+                        <div id="hidden-regions-inputs">
+                            {% set active_cities = coach.service_cities | from_json %}
+                            {% set active_districts = coach.service_districts | from_json %}
+                            {% for c in active_cities %}<input type="hidden" name="cities_list" value="{{ c }}">{%
+                            endfor %}
+                            {% for d in active_districts %}<input type="hidden" name="regions_list" value="{{ d }}">{%
+                            endfor %}
+                        </div>
+                    </div>
+
+
+                    <div class="space-y-3">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">個人簡介 /
+                            專業背景</label>
+                        <textarea name="bio" rows="4" required placeholder="分享您的教學經驗..."
+                            class="w-full p-8 bg-slate-50 rounded-[2rem] border-none font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none transition resize-none">{{ coach.bio }}</textarea>
+                    </div>
+                </section>
+
+                <!-- Advanced Options (Restored) -->
+                <section id="section-tags"
+                    class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-10">
+                    <h3 class="text-2xl font-black text-slate-900 flex items-center gap-3">
+                        <span class="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                        專業標籤與族群
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div class="space-y-4">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">教學風格</label>
+                            <div class="grid grid-cols-1 gap-2">
+                                {% set c_styles = coach.teaching_styles | from_json %}
+                                {% for opt in ["系統化/有計畫", "嚴格高效率", "耐心陪跑/鼓勵型", "安全保守/動作調整型"] %}
+                                <label
+                                    class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-transparent cursor-pointer hover:bg-blue-50/50 transition-all">
+                                    <input type="checkbox" name="teaching_styles" value="{{ opt }}"
+                                        class="w-5 h-5 text-blue-600 rounded-lg" {% if opt in c_styles %}checked{% endif
+                                        %}>
+                                    <span class="text-sm font-bold text-slate-600">{{ opt }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <label
+                                class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">適合族群</label>
+                            <div class="grid grid-cols-1 gap-2">
+                                {% set c_audiences = coach.audiences | from_json %}
+                                {% for opt in ["新手友善", "銀髮友善", "女性友善", "親子/青少年"] %}
+                                <label
+                                    class="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-transparent cursor-pointer hover:bg-blue-50/50 transition-all">
+                                    <input type="checkbox" name="audiences" value="{{ opt }}"
+                                        class="w-5 h-5 text-blue-600 rounded-lg" {% if opt in c_audiences %}checked{%
+                                        endif %}>
+                                    <span class="text-sm font-bold text-slate-600">{{ opt }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div id="fitness_block" class="sport-spec hidden">
+                    <section class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-10">
+                        <h3 class="text-2xl font-black text-rose-500 flex items-center gap-3">
+                            <span class="w-2 h-8 bg-rose-500 rounded-full"></span>
+                            健身專屬配對標籤
+                        </h3>
+                        <div class="space-y-8">
+                            <div class="space-y-4">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">健身目標與專長
+                                    (對應智慧配對測驗)</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {% set c_spec = coach.specialties | from_json %}
+                                    {% for opt in ["增肌", "減脂", "體態雕塑", "體能/耐力", "動作與姿勢調整", "產後核心/骨盆底友善", "銀髮安全訓練"] %}
+                                    <label
+                                        class="flex items-center gap-3 p-4 bg-rose-50/30 rounded-xl cursor-pointer hover:bg-rose-50 transition-all">
+                                        <input type="checkbox" name="specialties" value="{{ opt }}"
+                                            class="w-5 h-5 text-rose-600 rounded-lg" {% if opt in c_spec %}checked{%
+                                            endif %}>
+                                        <span class="text-sm font-bold text-rose-900">{{ opt }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="diving_block" class="sport-spec hidden">
+                    <section class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-10">
+                        <h3 class="text-2xl font-black text-blue-500 flex items-center gap-3">
+                            <span class="w-2 h-8 bg-blue-500 rounded-full"></span>
+                            潛水專屬配對標籤
+                        </h3>
+                        <div class="space-y-8">
+                            <div class="space-y-4">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">課程範疇與強化技能
+                                    (對應智慧配對測驗)</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {% set c_spec = coach.specialties | from_json %}
+                                    {% for opt in ["體驗/初學", "OW/AOW", "專長課程", "Fun Dive陪同/導潛", "中性浮力", "耗氣改善", "踢法/姿態",
+                                    "怕水建立信心", "水下攝影引導"] %}
+                                    <label
+                                        class="flex items-center gap-3 p-4 bg-blue-50/30 rounded-xl cursor-pointer hover:bg-blue-50 transition-all">
+                                        <input type="checkbox" name="specialties" value="{{ opt }}"
+                                            class="w-5 h-5 text-blue-600 rounded-lg" {% if opt in c_spec %}checked{%
+                                            endif %}>
+                                        <span class="text-sm font-bold text-blue-900">{{ opt }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div id="skiing_block" class="sport-spec hidden">
+                    <section class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm space-y-10">
+                        <h3 class="text-2xl font-black text-purple-600 flex items-center gap-3">
+                            <span class="w-2 h-8 bg-purple-600 rounded-full"></span>
+                            滑雪專屬配對標籤
+                        </h3>
+                        <div class="space-y-8">
+                            <div class="space-y-4">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">專精器材</label>
+                                <select name="gear_type"
+                                    class="w-full h-14 px-6 bg-slate-50 rounded-2xl border-none font-bold text-sm">
+                                    <option value="Ski" {% if coach.gear_type=='Ski' %}selected{% endif %}>Ski</option>
+                                    <option value="Snowboard" {% if coach.gear_type=='Snowboard' %}selected{% endif %}>
+                                        Snowboard</option>
+                                    <option value="都可以" {% if coach.gear_type=='都可以' %}selected{% endif %}>都可以</option>
+                                </select>
+                            </div>
+                            <div class="space-y-4">
+                                <label
+                                    class="text-[10px] font-black text-slate-400 uppercase tracking-widest block">技術重點
+                                    (對應智慧配對測驗)</label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {% set c_spec = coach.specialties | from_json %}
+                                    {% for opt in ["新手入門", "煞車安全", "轉彎技巧", "刻滑入門", "建立信心（怕摔）", "影片回放教學"] %}
+                                    <label
+                                        class="flex items-center gap-3 p-4 bg-purple-50/30 rounded-xl cursor-pointer hover:bg-purple-50 transition-all">
+                                        <input type="checkbox" name="specialties" value="{{ opt }}"
+                                            class="w-5 h-5 text-purple-600 rounded-lg" {% if opt in c_spec %}checked{%
+                                            endif %}>
+                                        <span class="text-sm font-bold text-purple-900">{{ opt }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Floating Bottom Actions -->
+                <div id="floatingSubmitBar"
+                    class="fixed bottom-0 left-0 right-0 z-40 p-6 translate-y-full transition-transform duration-500 ease-out">
+                    <div
+                        class="max-w-4xl mx-auto bg-slate-900 rounded-[2.5rem] shadow-2xl border border-slate-800 p-8 text-white flex flex-col md:flex-row items-center justify-between gap-8">
+                        <div class="max-w-md">
+                            <h4 class="text-xl font-black mb-1">準備送出更新審核嗎？</h4>
+                            <p class="text-slate-400 text-[11px] font-bold leading-relaxed">
+                                送出後，您的教練資料將暫時下架（搜尋頁不顯示）。管理員將於 24 小時內完成審核，通過後才會重新上架並套用最新內容。
+                            </p>
+                        </div>
+                        <button type="submit" id="submitBtnBottom"
+                            class="h-16 px-12 premium-bg text-white rounded-2xl font-black text-sm shadow-2xl shadow-blue-500/40 disabled:opacity-50 transition-all">
+                            送出更新審核
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const form = document.getElementById('profileForm');
+    const submitBtnTop = document.getElementById('submitBtnTop');
+    const submitBtnBottom = document.getElementById('submitBtnBottom');
+    const floatingBar = document.getElementById('floatingSubmitBar');
+
+    // Original values to detect dirty state
+    let isDirty = false;
+    const initialData = new FormData(form);
+
+    const TAIWAN_AREAS_DATA = {{ taiwan_areas | tojson | safe }};
+
+    function updateDistrictOptions() {
+        const city = document.getElementById('city-selector').value;
+        const districtSelect = document.getElementById('district-selector');
+        districtSelect.innerHTML = '<option value="">選擇行政區</option>';
+        if (city && TAIWAN_AREAS_DATA[city]) {
+            districtSelect.innerHTML += '<option value="全區域">全區域</option>';
+            TAIWAN_AREAS_DATA[city].forEach(d => {
+                if (d !== "不指定") {
+                    districtSelect.innerHTML += `<option value="${d}">${d}</option>`;
+                }
+            });
+        } else {
+            districtSelect.innerHTML = '<option value="">請先選擇縣市</option>';
+        }
+    }
+
+    function addRegion() {
+        const city = document.getElementById('city-selector').value;
+        const dist = document.getElementById('district-selector').value;
+        if (!city || !dist) return;
+
+        const val = `${city}:${dist}`;
+        const hiddenDiv = document.getElementById('hidden-regions-inputs');
+
+        // Prevent duplicates
+        const existing = Array.from(hiddenDiv.querySelectorAll('input[name="regions_list"]')).map(i => i.value);
+        if (existing.includes(val)) return;
+
+        // Add hidden city input too if not already there
+        const existingCities = Array.from(hiddenDiv.querySelectorAll('input[name="cities_list"]')).map(i => i.value);
+        if (!existingCities.includes(city)) {
+            const cityInput = document.createElement('input');
+            cityInput.type = 'hidden';
+            cityInput.name = 'cities_list';
+            cityInput.value = city;
+            hiddenDiv.appendChild(cityInput);
+        }
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'regions_list';
+        input.value = val;
+        hiddenDiv.appendChild(input);
+
+        renderRegionChips();
+        checkDirty();
+    }
+
+    function removeRegion(val) {
+        const hiddenDiv = document.getElementById('hidden-regions-inputs');
+        const [city] = val.split(':');
+
+        // Remove region input
+        const regionInputs = Array.from(hiddenDiv.querySelectorAll('input[name="regions_list"]'));
+        regionInputs.forEach(i => { if (i.value === val) i.remove(); });
+
+        // If no more regions for this city, remove city input
+        const remainingDistrictsInCity = Array.from(hiddenDiv.querySelectorAll('input[name="regions_list"]'))
+            .filter(i => i.value.startsWith(city + ':'));
+
+        if (remainingDistrictsInCity.length === 0) {
+            const cityInputs = Array.from(hiddenDiv.querySelectorAll('input[name="cities_list"]'));
+            cityInputs.forEach(i => { if (i.value === city) i.remove(); });
+        }
+
+        renderRegionChips();
+        checkDirty();
+    }
+
+    function renderRegionChips() {
+        const container = document.getElementById('selected-regions-chips');
+        const hiddenDiv = document.getElementById('hidden-regions-inputs');
+        const vals = Array.from(hiddenDiv.querySelectorAll('input[name="regions_list"]')).map(i => i.value);
+
+        if (vals.length === 0) {
+            container.innerHTML = '<p class="text-[10px] text-slate-300 font-bold w-full text-center py-2">尚未選擇地區 (搜尋時將排除此教練)</p>';
+            return;
+        }
+
+        container.innerHTML = vals.map(v => `
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 font-black text-[10px]">
+                ${v}
+                <button type="button" onclick="removeRegion('${v}')" class="hover:text-rose-500 transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    // Initial render
+    document.addEventListener('DOMContentLoaded', () => {
+        renderRegionChips();
+    });
+
+    function toggleAllAreas() {
+        const checkbox = document.getElementById('service_all_areas');
+        const selector = document.getElementById('region-selector-block');
+        if (checkbox.checked) {
+            selector.classList.add('hidden');
+        } else {
+            selector.classList.remove('hidden');
+        }
+        checkDirty();
+    }
+
+    function toggleDistricts(city) {
+        // Obsolete with dropdown but kept for safety if needed
+    }
+
+    function checkDirty() {
+        if ("{{ coach.status }}" === "PENDING") {
+            submitBtnTop.disabled = true;
+            submitBtnTop.innerText = "審核處理中...";
+            return;
+        }
+
+        const currentData = new FormData(form);
+        isDirty = false;
+
+        const multiSelectNames = ['sports_list', 'cities_list', 'regions_list', 'tags_list', 'teaching_styles', 'audiences', 'specialties', 'venues'];
+
+        // Simple field comparison
+        for (let [key, value] of currentData.entries()) {
+            if (multiSelectNames.includes(key)) continue;
+            if (initialData.get(key) !== value) {
+                isDirty = true;
+                break;
+            }
+        }
+
+        // Multi-select comparison
+        if (!isDirty) {
+            const checkMulti = (name) => {
+                const init = initialData.getAll(name).sort().join(',');
+                const curr = currentData.getAll(name).sort().join(',');
+                return init !== curr;
+            };
+            for (const name of multiSelectNames) {
+                if (checkMulti(name)) {
+                    isDirty = true;
+                    break;
+                }
+            }
+        }
+
+        // Checkbox status comparison (special handling for checkboxes that might be missing from FormData when unchecked)
+        if (!isDirty) {
+            if (initialData.get('service_all_areas') !== currentData.get('service_all_areas')) {
+                isDirty = true;
+            }
+        }
+
+        // UX: Floating Bar Visibility
+        if (isDirty) {
+            floatingBar.classList.remove('translate-y-full');
+            submitBtnTop.disabled = false;
+            submitBtnTop.classList.remove('opacity-50', 'grayscale');
+            submitBtnBottom.disabled = false;
+        } else {
+            floatingBar.classList.add('translate-y-full');
+            submitBtnTop.disabled = true;
+            submitBtnTop.classList.add('opacity-50', 'grayscale');
+            submitBtnBottom.disabled = true;
+        }
+    }
+
+    form.addEventListener('input', checkDirty);
+    form.addEventListener('change', checkDirty);
+
+    function updateSportFields() {
+        const selectedSports = Array.from(document.querySelectorAll('input[name="sports_list"]:checked')).map(el => el.value);
+        const sportsTextEl = document.getElementById('sports_text');
+        if (sportsTextEl) sportsTextEl.value = selectedSports.join(',');
+
+        document.querySelectorAll('.sport-spec').forEach(el => el.classList.add('hidden'));
+        if (selectedSports.includes('健身')) document.getElementById('fitness_block').classList.remove('hidden');
+        if (selectedSports.includes('潛水')) document.getElementById('diving_block').classList.remove('hidden');
+        if (selectedSports.includes('滑雪')) document.getElementById('skiing_block').classList.remove('hidden');
+        checkDirty();
+    }
+
+    window.addEventListener('load', () => {
+        updateSportFields();
+        checkDirty(); // Initial state
+    });
+
+    form.onsubmit = (e) => {
+        submitBtnBottom.disabled = true;
+        submitBtnBottom.innerText = "提交中...";
+        return confirm('送出後您的資料將暫時下架進入審核。確定送出？');
+    }
+</script>
+{% endblock %}

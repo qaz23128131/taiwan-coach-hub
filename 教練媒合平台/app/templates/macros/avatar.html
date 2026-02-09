@@ -1,0 +1,37 @@
+{% macro render_avatar(src=None, name=None, sport_type=None, size='md', circular=True) %}
+{# size: xs(24px), sm(32px), md(48px), lg(80px), xl(128px), full(100%) #}
+{% set size_map = {
+'xs': 'w-6 h-6 text-[10px]',
+'sm': 'w-8 h-8 text-xs',
+'md': 'w-12 h-12 text-sm',
+'lg': 'w-20 h-20 text-2xl',
+'xl': 'w-32 h-32 text-4xl',
+'full': 'w-full h-full text-4xl'
+} %}
+{% set current_size = size_map[size] if size in size_map else size_map['md'] %}
+{% set shape = 'rounded-full' if circular else 'rounded-none' %}
+
+<div
+    class="{{ current_size }} {{ shape }} overflow-hidden flex-shrink-0 bg-slate-100 flex items-center justify-center relative group">
+    {% if src and src != "/static/default_avatar.png" %}
+    <img src="{{ src }}" alt="{{ name or 'User' }}" class="w-full h-full object-cover"
+        onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');">
+    {% endif %}
+
+    <div class="{% if src and src != '/static/default_avatar.png' %}hidden{% else %}flex{% endif %} w-full h-full items-center justify-center font-black uppercase tracking-tighter
+            {% if sport_type == '健身' %}bg-blue-600 text-white
+            {% elif sport_type == '潛水' %}bg-cyan-500 text-white
+            {% elif sport_type == '滑雪' %}bg-slate-700 text-white
+            {% else %}bg-slate-200 text-slate-400{% endif %}">
+
+        {% if sport_type == '健身' %}<i class="fas fa-dumbbell"></i>
+        {% elif sport_type == '潛水' %}<i class="fas fa-water"></i>
+        {% elif sport_type == '滑雪' %}<i class="fas fa-skiing"></i>
+        {% elif name %}
+        {{ name[:1] }}
+        {% else %}
+        <i class="fas fa-user"></i>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}

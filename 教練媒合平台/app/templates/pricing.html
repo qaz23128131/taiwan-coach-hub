@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="text-center max-w-4xl mx-auto mb-20">
+    <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4">選擇適合您的成長方案</h1>
+    <p class="text-slate-500 text-lg">透過專業工具提升您的教練事業，讓更多準學員在台中找到您。</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-4 pb-20">
+    <!-- Free -->
+    <div class="bg-white p-10 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col">
+        <h3 class="text-xl font-bold text-slate-900 mb-2">基礎版 <span class="text-slate-400 font-normal ml-1">Free</span>
+        </h3>
+        <p class="text-slate-400 text-sm mb-8">適合剛起步的獨立教練</p>
+        <div class="text-4xl font-extrabold text-slate-900 mb-10">NT$ 0 <span
+                class="text-sm font-normal text-slate-400">/月</span></div>
+
+        <ul class="space-y-4 mb-12 flex-grow">
+            <li class="flex items-center text-slate-600 text-sm"><i class="fas fa-check text-emerald-500 mr-3"></i>
+                基礎教練檔案上架</li>
+            <li class="flex items-center text-slate-600 text-sm"><i class="fas fa-check text-emerald-500 mr-3"></i>
+                接受學員預約詢問</li>
+            <li class="flex items-center text-slate-300 text-sm italic"><i class="fas fa-times mr-3"></i> 實名驗證標章</li>
+            <li class="flex items-center text-slate-300 text-sm italic"><i class="fas fa-times mr-3"></i> 搜尋結果優先排序</li>
+        </ul>
+
+        <a href="/register" class="btn-base btn-secondary w-full">立即開始</a>
+    </div>
+
+    <!-- Pro -->
+    <div
+        class="bg-white p-10 rounded-[2rem] border-2 border-blue-500 shadow-2xl relative flex flex-col md:scale-105 z-10 transition hover:scale-110 duration-300">
+        <div
+            class="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xl">
+            最受歡迎選擇</div>
+        <h3 class="text-xl font-bold text-slate-900 mb-2">專業版 <span class="text-blue-500 font-normal ml-1">Pro</span>
+        </h3>
+        <p class="text-slate-400 text-sm mb-8">建立信任與專業品牌形象</p>
+        <div class="text-4xl font-extrabold text-slate-900 mb-10">NT$ 499 <span
+                class="text-sm font-normal text-slate-400">/月</span></div>
+
+        <ul class="space-y-4 mb-12 flex-grow">
+            <li class="flex items-center text-slate-600 text-sm"><i class="fas fa-check text-blue-500 mr-3"></i>
+                <strong>實名驗證教練標章</strong></li>
+            <li class="flex items-center text-slate-600 text-sm"><i class="fas fa-check text-blue-500 mr-3"></i>
+                完整作品集展示空間</li>
+            <li class="flex items-center text-slate-600 text-sm"><i class="fas fa-check text-blue-500 mr-3"></i>
+                搜尋結果排名顯著提升</li>
+            <li class="flex items-center text-slate-600 text-sm"><i class="fas fa-check text-blue-500 mr-3"></i>
+                詳細預約與曝光數據統計</li>
+        </ul>
+
+        <button class="btn-base btn-premium w-full !h-14">立即升級專業版</button>
+    </div>
+
+    <!-- Elite -->
+    <div class="bg-slate-900 p-10 rounded-[2rem] shadow-xl text-white flex flex-col">
+        <h3 class="text-xl font-bold mb-2">菁英版 <span class="text-amber-400 font-normal ml-1">Elite</span></h3>
+        <p class="text-slate-500 text-sm mb-8">征服台中教練媒合市場</p>
+        <div class="text-4xl font-extrabold text-white mb-10">NT$ 999 <span
+                class="text-sm font-normal text-slate-500">/月</span></div>
+
+        <ul class="space-y-4 mb-12 flex-grow">
+            <li class="flex items-center text-slate-300 text-sm"><i class="fas fa-check text-amber-500 mr-3"></i>
+                <strong>首頁與區域搜尋置頂推薦</strong></li>
+            <li class="flex items-center text-slate-300 text-sm"><i class="fas fa-check text-amber-500 mr-3"></i>
+                同區域競品分析月報</li>
+            <li class="flex items-center text-slate-300 text-sm"><i class="fas fa-check text-amber-500 mr-3"></i>
+                優先回覆學員評價與私訊</li>
+            <li class="flex items-center text-slate-300 text-sm"><i class="fas fa-check text-amber-500 mr-3"></i>
+                專屬黃金質感卡片外框</li>
+        </ul>
+
+        <button class="btn-base bg-white text-slate-900 w-full hover:bg-slate-100 transition">聯繫我們升級</button>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto pb-20 h-[85vh]">
+    <div class="h-full bg-white rounded-[3rem] shadow-2xl overflow-hidden flex">
+
+        <!-- Sidebar: Chat List -->
+        <div class="w-80 bg-slate-50 border-r border-slate-100 flex flex-col">
+            <div class="p-6 border-b border-slate-100">
+                <h1 class="text-xl font-black text-slate-900 mb-4">訊息中心</h1>
+
+                <!-- Filter Tabs -->
+                <div class="flex bg-slate-200/50 p-1 rounded-xl">
+                    <button onclick="switchTab('coach')" id="tab-coach"
+                        class="flex-1 py-2 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-sm">教練專區</button>
+                    <button onclick="switchTab('student')" id="tab-student"
+                        class="flex-1 py-2 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-700">學員專區</button>
+                </div>
+            </div>
+
+            <!-- List -->
+            <div id="chatList" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <!-- Dynamic Items -->
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 flex flex-col bg-white" id="chatArea">
+            <!-- Header -->
+            <div class="h-20 border-b border-slate-50 px-8 flex items-center justify-between shrink-0">
+                <div id="chatHeader" class="hidden">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-black"
+                            id="headerAvatar">U</div>
+                        <div>
+                            <div class="text-sm font-black text-slate-900" id="headerName">Select a chat</div>
+                            <div class="text-[10px] font-bold text-slate-400" id="headerSubject">Subject</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-slate-300 font-bold text-xs" id="emptyHeader">請選擇左側對話</div>
+            </div>
+
+            <!-- Messages -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-8 space-y-6 bg-white">
+                <!-- Dynamic Messages -->
+            </div>
+
+            <!-- Input -->
+            <div class="p-6 border-t border-slate-50 hidden" id="inputArea">
+                <form id="messageForm" class="flex gap-4 relative">
+                    <!-- File UI -->
+                    <input type="file" id="fileInput" hidden>
+                    <button type="button" id="uploadBtn"
+                        class="w-12 h-12 rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 transition-all">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
+                    <div id="fileName"
+                        class="hidden absolute top-[-30px] left-16 bg-slate-900 text-white text-[10px] px-3 py-1 rounded-lg">
+                    </div>
+
+                    <input type="text" name="content" placeholder="輸入訊息回覆..."
+                        class="flex-1 h-12 bg-slate-50 rounded-2xl px-6 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-slate-100 transition-all">
+                    <button type="submit"
+                        class="h-12 px-8 bg-slate-900 text-white rounded-2xl text-xs font-black hover:bg-slate-800 transition-all">
+                        發送
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentRole = 'coach';
+    let activeChatId = null;
+    let currentUser = null; // Admin
+
+    async function init() {
+        await loadChats();
+    }
+
+    async function switchTab(role) {
+        currentRole = role;
+        document.getElementById('tab-coach').className = role === 'coach' ?
+            'flex-1 py-2 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-sm' :
+            'flex-1 py-2 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-700';
+
+        document.getElementById('tab-student').className = role === 'student' ?
+            'flex-1 py-2 rounded-lg text-xs font-bold transition-all bg-white text-slate-900 shadow-sm' :
+            'flex-1 py-2 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-slate-700';
+
+        loadChats();
+    }
+
+    async function loadChats() {
+        try {
+            const res = await fetch(`/api/admin/conversations?role=${currentRole}`);
+            const chats = await res.json();
+            const list = document.getElementById('chatList');
+            list.innerHTML = '';
+
+            chats.forEach(chat => {
+                const activeClass = chat.id === activeChatId ? 'bg-slate-50 ring-1 ring-slate-100' : 'hover:bg-slate-50/50';
+                list.innerHTML += `
+                <div onclick="selectChat(${chat.id})" class="p-4 rounded-2xl cursor-pointer transition-all ${activeClass}">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">#${chat.id}</span>
+                        <span class="text-[9px] font-bold text-slate-300">${chat.updated_at}</span>
+                    </div>
+                    <div class="text-sm font-black text-slate-900 mb-1 truncate">${chat.subject}</div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-500">
+                            ${chat.user_name[0]}
+                        </div>
+                        <span class="text-xs font-bold text-slate-500 truncate">${chat.user_name}</span>
+                        ${chat.unread ? '<span class="w-2 h-2 rounded-full bg-rose-500"></span>' : ''}
+                    </div>
+                </div>`;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    function formatContent(content) {
+        if (!content.includes('[附件]')) return content;
+
+        return content.replace(/(?:^|\s)\[附件\]\s+([^\s]+)/g, (match, url) => {
+            let cleanUrl = url.trim();
+            let icon = 'fa-file-alt';
+            if (cleanUrl.match(/\.(jpg|jpeg|png|gif)$/i)) icon = 'fa-image';
+            else if (cleanUrl.match(/\.pdf$/i)) icon = 'fa-file-pdf';
+
+            return `<br><a href="${cleanUrl}" target="_blank" class="inline-flex items-center gap-2 mt-2 px-3 py-1 bg-white text-slate-700 border border-slate-200 rounded-lg text-xs font-bold hover:text-blue-600 transition-all">
+                        <i class="fas ${icon}"></i> 附件
+                      </a>`;
+        }).replace(/\n/g, '<br>');
+    }
+
+    async function selectChat(id) {
+        activeChatId = id;
+        loadChats(); // Refresh list highlights
+
+        document.getElementById('inputArea').classList.remove('hidden');
+        document.getElementById('chatHeader').classList.remove('hidden');
+        document.getElementById('emptyHeader').classList.add('hidden');
+
+        try {
+            const res = await fetch(`/api/admin/conversations/${id}`);
+            const data = await res.json();
+
+            // Header
+            document.getElementById('headerName').innerText = data.user_name;
+            document.getElementById('headerSubject').innerText = data.subject;
+            document.getElementById('headerAvatar').innerText = data.user_name[0];
+
+            // Messages
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+
+            data.messages.forEach(msg => {
+                const isMe = msg.sender_role === 'admin';
+                const align = isMe ? 'ml-auto items-end' : 'mr-auto items-start';
+                const bg = isMe ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600';
+
+                container.innerHTML += `
+                <div class="flex flex-col ${align} max-w-[70%]">
+                    <div class="px-5 py-3 rounded-2xl text-sm font-bold ${bg} whitespace-pre-wrap">
+                        ${formatContent(msg.content)}
+                    </div>
+                    <div class="text-[9px] font-bold text-slate-300 mt-1 px-1">
+                        ${msg.sender_role === 'admin' ? 'Admin' : data.user_name} • ${msg.created_at}
+                    </div>
+                </div>`;
+            });
+
+            container.scrollTop = container.scrollHeight;
+
+        } catch (e) { console.error(e); }
+    }
+
+    // File Upload Logic
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileName = document.getElementById('fileName');
+
+    uploadBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            fileName.innerText = fileInput.files[0].name;
+            fileName.classList.remove('hidden');
+            uploadBtn.classList.add('text-blue-600', 'bg-blue-50');
+        } else {
+            fileName.classList.add('hidden');
+            uploadBtn.classList.remove('text-blue-600', 'bg-blue-50');
+        }
+    });
+
+    document.getElementById('messageForm').onsubmit = async (e) => {
+        e.preventDefault();
+        if (!activeChatId) return;
+
+        const content = e.target.content.value;
+        const file = fileInput.files[0];
+
+        const formData = new FormData();
+        formData.append('content', content);
+        if (file) formData.append('file', file);
+
+        try {
+            await fetch(`/api/admin/conversations/${activeChatId}/messages`, {
+                method: 'POST',
+                body: formData
+            });
+
+            e.target.content.value = '';
+            fileInput.value = ''; // Reset file
+            fileName.classList.add('hidden');
+            uploadBtn.classList.remove('text-blue-600', 'bg-blue-50');
+
+            selectChat(activeChatId); // Refresh
+        } catch (e) { alert('Failed to send'); }
+    };
+
+    init();
+</script>
+{% endblock %}
